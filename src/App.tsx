@@ -222,7 +222,7 @@ export default function App() {
         </section>
 
         <aside className="space-y-3">
-          <FleetStatus board={game.playerBoard} title="Your fleet" />
+          <FleetStatus board={game.playerBoard} title="Your fleet" revealDamage />
           <FleetStatus board={game.aiBoard} title="Enemy fleet" />
           <AiExplainer
             difficulty={game.difficulty}

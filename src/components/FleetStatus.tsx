@@ -1,12 +1,19 @@
 import { isSunk } from '../engine/board';
 import type { Board } from '../engine/types';
 
+function cellTone(sunk: boolean, damaged: boolean): string {
+  if (sunk) return 'bg-rose-500';
+  return damaged ? 'bg-amber-400' : 'bg-slate-400/60';
+}
+
 interface FleetStatusProps {
   board: Board;
   title: string;
+  /** Per-cell damage is only public knowledge for your own fleet. */
+  revealDamage?: boolean;
 }
 
-export function FleetStatus({ board, title }: FleetStatusProps) {
+export function FleetStatus({ board, title, revealDamage = false }: FleetStatusProps) {
   const afloat = board.ships.filter((s) => !isSunk(s)).length;
 
   return (
@@ -32,13 +39,10 @@ export function FleetStatus({ board, title }: FleetStatusProps) {
                 {Array.from({ length: ship.length }, (_, i) => (
                   <span
                     key={i}
-                    className={`h-2 w-2 rounded-[2px] ${
-                      i < ship.hits.length
-                        ? sunk
-                          ? 'bg-rose-500'
-                          : 'bg-amber-400'
-                        : 'bg-slate-400/60'
-                    }`}
+                    className={`h-2 w-2 rounded-[2px] ${cellTone(
+                      sunk,
+                      revealDamage && i < ship.hits.length,
+                    )}`}
                   />
                 ))}
               </span>

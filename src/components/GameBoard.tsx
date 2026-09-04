@@ -169,8 +169,8 @@ function Cell({
   if (isPreview) {
     classes.push(
       previewValid
-        ? 'border-emerald-300 bg-emerald-400/70'
-        : 'border-rose-300 bg-rose-500/70',
+        ? 'border-emerald-200 bg-emerald-400'
+        : 'border-rose-200 bg-rose-500',
     );
   } else if (sunk) {
     classes.push('border-rose-900 bg-rose-800');
@@ -184,19 +184,14 @@ function Cell({
     classes.push('border-sea-600 bg-sea-800');
   }
 
-  if (interactive) {
+  if (interactive && !isPreview) {
     classes.push('cursor-pointer hover:border-cyan-300 hover:bg-sea-600');
+  } else if (interactive) {
+    classes.push('cursor-pointer');
   }
 
-  const status = sunk
-    ? `sunk ${ship?.name}`
-    : state === 'hit'
-      ? 'hit'
-      : state === 'miss'
-        ? 'miss'
-        : revealShips && ship
-          ? `${ship.name}`
-          : 'unknown';
+  const outcome = sunk ? 'sunk' : state === 'unknown' ? 'unknown' : state;
+  const status = revealShips && ship ? `${ship.name} ${outcome}` : outcome;
 
   return (
     <button

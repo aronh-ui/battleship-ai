@@ -3,7 +3,7 @@
 A browser Battleship game: place your fleet, then trade salvos with an AI opponent that
 hunts with a checkerboard search pattern and locks onto ships once it draws blood.
 
-**Play it:** _deployed URL — see Deployment below_
+**Play it:** https://aronh-ui.github.io/battleship-ai/
 
 ![Setup phase](docs/screenshot-setup.png)
 ![Battle phase](docs/screenshot-battle.png)
@@ -35,7 +35,7 @@ hunts with a checkerboard search pattern and locks onto ships once it draws bloo
 | Styling    | Tailwind CSS 3                          |
 | Unit tests | Vitest                                  |
 | QA script  | Playwright (CDP, headed Chrome)         |
-| Hosting    | Static hosting (Vercel / Netlify ready) |
+| Hosting    | GitHub Pages (Vercel / Netlify ready)   |
 
 No backend, database or authentication: the whole game runs client-side, so the app is a
 static bundle.
@@ -144,7 +144,14 @@ covers and what it found.
 
 ## Deployment
 
-The app is a static bundle (`dist/`), so any static host works.
+The app is a static bundle (`dist/`), so any static host works. No environment variables
+or secrets are required.
+
+**GitHub Pages (what this repo uses)**
+
+`.github/workflows/deploy.yml` runs the test suite, builds with
+`BASE_PATH=/battleship-ai/` and publishes `dist/` on every push to `main`. Enable it once
+under *Settings → Pages → Source: GitHub Actions*.
 
 **Vercel**
 
@@ -161,8 +168,8 @@ netlify deploy --prod --dir=dist   # after npm run build
 ```
 
 Both providers also deploy straight from the GitHub repo with zero configuration: build
-command `npm run build`, publish directory `dist`. No environment variables or secrets
-are required.
+command `npm run build`, publish directory `dist`. Leave `BASE_PATH` unset there — the
+bundle is then served from the domain root.
 
 ## Known limitations
 

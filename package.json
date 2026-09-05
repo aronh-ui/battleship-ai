@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "qa:playthrough": "node scripts/playthrough.mjs"
+    "qa:playthrough": "node scripts/playthrough.mjs",
+    "qa:adversarial": "node scripts/adversarial.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

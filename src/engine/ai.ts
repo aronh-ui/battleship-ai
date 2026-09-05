@@ -175,8 +175,12 @@ export function updateAiState(state: AiState, result: AttackResult): AiState {
     return { ...state, pendingHits: [...state.pendingHits, result.coord] };
   }
   if (result.outcome === 'sunk') {
+    // Only the sunk ship's own cells are cleared: a touching ship may still be
+    // damaged, and its hits are connected to the ones just cleared.
     const sunkCells = new Set(
-      connectedGroup([...state.pendingHits, result.coord]).map(key),
+      (result.ship?.cells ?? connectedGroup([...state.pendingHits, result.coord])).map(
+        key,
+      ),
     );
     return {
       ...state,

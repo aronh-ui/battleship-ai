@@ -18,12 +18,17 @@ import {
   startGame,
   type GameState,
 } from './engine/game';
+import { loadGame, saveGame } from './engine/persistence';
 import type { Coord, Difficulty, Orientation } from './engine/types';
 
 const AI_THINKING_MS = 650;
 
+const store = typeof window === 'undefined' ? undefined : window.sessionStorage;
+
 export default function App() {
-  const [game, setGame] = useState<GameState>(() => createGame('smart'));
+  const [game, setGame] = useState<GameState>(
+    () => loadGame(store) ?? createGame('smart'),
+  );
   const [orientation, setOrientation] = useState<Orientation>('horizontal');
   const [hover, setHover] = useState<Coord | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -39,6 +44,9 @@ export default function App() {
   }, []);
 
   useEffect(() => () => window.clearTimeout(noticeTimer.current), []);
+
+  // Surviving an accidental refresh matters more than a pristine URL bar.
+  useEffect(() => saveGame(store, game), [game]);
 
   // The AI takes its shot shortly after the player's, so the result is readable.
   useEffect(() => {

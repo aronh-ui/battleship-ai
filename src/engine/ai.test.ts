@@ -144,6 +144,29 @@ describe('target mode', () => {
     expect(move.mode).toBe('hunt');
   });
 
+  it('keeps targeting a damaged ship that touches the one it just sank', () => {
+    // Destroyer at A1-B1 with a cruiser butted against it at C1-E1.
+    let board = boardWith(
+      [4, { row: 0, col: 0 }, 'horizontal'],
+      [2, { row: 0, col: 2 }, 'horizontal'],
+    );
+    let state = createAiState('smart');
+    for (const coord of [
+      { row: 0, col: 2 },
+      { row: 0, col: 1 },
+      { row: 0, col: 0 },
+    ]) {
+      const outcome = attack(board, coord);
+      board = outcome.board;
+      state = updateAiState(state, outcome.result);
+    }
+    expect(state.pendingHits).toEqual([{ row: 0, col: 2 }]);
+
+    const move = chooseMove(board, state, rng)!;
+    expect(move.mode).toBe('target');
+    expect(move.coord).toEqual({ row: 1, col: 2 });
+  });
+
   it('keeps targeting a second damaged ship when one of two sinks', () => {
     let state = createAiState('smart');
     state = updateAiState(state, { outcome: 'hit', coord: { row: 0, col: 0 } });

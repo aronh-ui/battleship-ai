@@ -120,7 +120,7 @@ npm run test:watch # Vitest in watch mode
 
 ## Tests
 
-`npm test` runs the engine suites in `src/engine/*.test.ts` (51 tests):
+`npm test` runs the engine suites in `src/engine/*.test.ts` (57 tests):
 
 - `board.test.ts` — board creation, horizontal/vertical placement, off-board and overlap
   rejection, immutability, hit/miss detection, duplicate-attack prevention, sinking,
@@ -136,11 +136,15 @@ npm run test:watch # Vitest in watch mode
   alternation, out-of-turn and post-game attack rejection, win/loss detection, and
   `Play again` resetting state while keeping the chosen difficulty.
 - `coords.test.ts` — A1-style coordinate labels.
+- `persistence.test.ts` — saving and restoring a game in progress, and ignoring corrupt,
+  foreign or inaccessible storage.
 
 There is also an end-to-end playthrough script used for QA
 (`npm run qa:playthrough -- <url> [--easy] [--mobile]`). It drives a real browser over
-CDP, plays a full game and fails on console errors; see `BUGS_AND_FIXES.md` for what it
-covers and what it found.
+CDP, plays a full game and fails on console errors, and an adversarial pass
+(`npm run qa:adversarial -- <url> [--mobile]`) that attacks placement boundaries, rapid
+clicking, turn order, restart and mid-game refresh; see `BUGS_AND_FIXES.md` for what they
+cover and what they found.
 
 ## Deployment
 
@@ -173,8 +177,9 @@ bundle is then served from the domain root.
 
 ## Known limitations
 
-- Single-player only: no multiplayer, no persistence, and refreshing the page starts a
-  new game.
+- Single-player only: no multiplayer and no accounts. A game in progress is kept in
+  `sessionStorage`, so a refresh or accidental navigation resumes it, but closing the tab
+  discards it — there is no long-term save.
 - Ships may touch each other; the variant that forbids adjacent ships is not implemented.
 - Placement is click-to-place with a rotate toggle rather than drag-and-drop, and there
   is no "move a ship after placing it" (use `Clear` or `Randomize placement`).
@@ -182,5 +187,5 @@ bundle is then served from the domain root.
   density search would be stronger, at the cost of being much harder to explain).
 - Switching difficulty mid-game takes effect immediately and keeps the AI's existing
   memory of damaged ships.
-- The QA playthrough script needs a Chrome instance exposing a CDP endpoint; it is a
-  developer tool, not part of `npm test`.
+- The QA playthrough and adversarial scripts need a Chrome instance exposing a CDP
+  endpoint; they are developer tools, not part of `npm test`.

@@ -24,6 +24,9 @@ hunts with a checkerboard search pattern and locks onto ships once it draws bloo
   `Play again`, which resets all state.
 - Enemy ship positions are never revealed before the game ends, and per-ship damage on
   the enemy fleet panel stays hidden until a ship actually sinks.
+- **Ship artwork** — each ship is drawn as a single inline-SVG silhouette (hull, deck and
+  superstructure per class) spanning its exact cells in either orientation, with impact
+  markers on damaged cells and a wrecked state once sunk. No external image assets.
 - Responsive layout for desktop and mobile, with subtle hit/miss animations.
 
 ## Tech stack
@@ -55,6 +58,7 @@ src/
     *.test.ts      Vitest suites for the engine
   components/      presentational React components
     GameBoard.tsx  10x10 grid renderer (own board, enemy board, reveal mode)
+    ShipSprite.tsx SVG ship silhouettes (per class, length, orientation, damage)
     FleetStatus.tsx  ships remaining / damage for one side
     GameOverModal.tsx
   App.tsx          the only stateful component: owns GameState and wires the UI

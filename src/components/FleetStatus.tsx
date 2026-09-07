@@ -1,10 +1,9 @@
-import { isSunk } from '../engine/board';
+import { isSunk, key } from '../engine/board';
+import { ShipSprite } from './ShipSprite';
 import type { Board } from '../engine/types';
 
-function cellTone(sunk: boolean, damaged: boolean): string {
-  if (sunk) return 'bg-rose-500';
-  return damaged ? 'bg-amber-400' : 'bg-slate-400/60';
-}
+/** Height in pixels of one cell of the fleet-panel ship icons. */
+const PIP = 12;
 
 interface FleetStatusProps {
   board: Board;
@@ -15,6 +14,7 @@ interface FleetStatusProps {
 
 export function FleetStatus({ board, title, revealDamage = false }: FleetStatusProps) {
   const afloat = board.ships.filter((s) => !isSunk(s)).length;
+  const hitIds = new Set(board.ships.flatMap((s) => s.hits.map(key)));
 
   return (
     <div className="rounded-lg border border-sea-600 bg-sea-800/60 p-3">
@@ -35,17 +35,21 @@ export function FleetStatus({ board, title, revealDamage = false }: FleetStatusP
               }`}
             >
               <span>{ship.name}</span>
-              <span className="flex gap-[2px]" aria-hidden>
-                {Array.from({ length: ship.length }, (_, i) => (
-                  <span
-                    key={i}
-                    className={`h-2 w-2 rounded-[2px] ${cellTone(
-                      sunk,
-                      revealDamage && i < ship.hits.length,
-                    )}`}
-                  />
-                ))}
-              </span>
+              <ShipSprite
+                name={ship.name}
+                length={ship.length}
+                orientation="horizontal"
+                tone={sunk ? 'sunk' : 'afloat'}
+                damage={
+                  revealDamage
+                    ? ship.cells
+                        .map((cell, i) => (hitIds.has(key(cell)) ? i : -1))
+                        .filter((i) => i >= 0)
+                    : []
+                }
+                className="shrink-0"
+                style={{ width: ship.length * PIP, height: PIP }}
+              />
             </li>
           );
         })}

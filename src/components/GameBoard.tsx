@@ -1,7 +1,24 @@
 import { useMemo } from 'react';
 import { isSunk, key } from '../engine/board';
 import { COLUMN_LABELS, coordLabel } from '../engine/coords';
-import { BOARD_SIZE, type Board, type Coord } from '../engine/types';
+import { ShipSprite, type ShipTone } from './ShipSprite';
+import {
+  BOARD_SIZE,
+  type Board,
+  type Coord,
+  type Orientation,
+  type ShipName,
+} from '../engine/types';
+
+interface ShipOverlay {
+  id: string;
+  name: ShipName;
+  length: number;
+  orientation: Orientation;
+  origin: Coord;
+  damage: number[];
+  tone: ShipTone;
+}
 
 export interface GameBoardProps {
   board: Board;
@@ -11,6 +28,7 @@ export interface GameBoardProps {
   disabled?: boolean;
   previewCells?: Coord[];
   previewValid?: boolean;
+  previewShip?: { name: ShipName; orientation: Orientation } | null;
   lastShot?: Coord | null;
   label: string;
   onCellClick?: (coord: Coord) => void;
@@ -25,6 +43,7 @@ export function GameBoard({
   disabled = false,
   previewCells = [],
   previewValid = true,
+  previewShip = null,
   lastShot = null,
   label,
   onCellClick,
@@ -46,6 +65,40 @@ export function GameBoard({
     [previewCells],
   );
 
+  const overlays = useMemo<ShipOverlay[]>(() => {
+    if (!revealShips) return [];
+    return board.ships.map((ship) => {
+      const cells = ship.cells;
+      const orientation: Orientation =
+        cells.length > 1 && cells[0].row === cells[1].row ? 'horizontal' : 'vertical';
+      const damage = cells
+        .map((cell, index) => (board.grid[cell.row][cell.col] === 'hit' ? index : -1))
+        .filter((index) => index >= 0);
+      return {
+        id: ship.id,
+        name: ship.name,
+        length: ship.length,
+        orientation,
+        origin: cells[0],
+        damage,
+        tone: isSunk(ship) ? 'sunk' : 'afloat',
+      };
+    });
+  }, [board.ships, board.grid, revealShips]);
+
+  const previewOverlay = useMemo<ShipOverlay | null>(() => {
+    if (!previewShip || previewCells.length === 0) return null;
+    return {
+      id: 'preview',
+      name: previewShip.name,
+      length: previewCells.length,
+      orientation: previewShip.orientation,
+      origin: previewCells[0],
+      damage: [],
+      tone: previewValid ? 'preview' : 'invalid',
+    };
+  }, [previewShip, previewCells, previewValid]);
+
   return (
     <div
       className="select-none"
@@ -53,7 +106,7 @@ export function GameBoard({
       aria-label={label}
       role="grid"
     >
-      <div className="grid grid-cols-[1.25rem_repeat(10,minmax(0,1fr))] gap-[2px] sm:gap-[3px]">
+      <div className="relative grid grid-cols-[1.25rem_repeat(10,minmax(0,1fr))] gap-[2px] sm:gap-[3px]">
         <div />
         {COLUMN_LABELS.map((c) => (
           <div
@@ -80,6 +133,43 @@ export function GameBoard({
             onCellEnter={onCellEnter}
           />
         ))}
+
+        {/* Hulls live in their own layer so a ship is one continuous silhouette
+            across its cells instead of an icon repeated in every cell. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 grid grid-cols-[1.25rem_repeat(10,minmax(0,1fr))] grid-rows-[auto_repeat(10,minmax(0,1fr))] gap-[2px] sm:gap-[3px]"
+        >
+          {[...overlays, ...(previewOverlay ? [previewOverlay] : [])].map((ship) => (
+            <div
+              key={ship.id}
+              className="self-stretch justify-self-stretch p-[1px]"
+              style={{
+                gridColumn:
+                  ship.orientation === 'horizontal'
+                    ? `${ship.origin.col + 2} / span ${ship.length}`
+                    : `${ship.origin.col + 2}`,
+                gridRow:
+                  ship.orientation === 'vertical'
+                    ? `${ship.origin.row + 2} / span ${ship.length}`
+                    : `${ship.origin.row + 2}`,
+              }}
+            >
+              <ShipSprite
+                name={ship.name}
+                length={ship.length}
+                orientation={ship.orientation}
+                damage={ship.damage}
+                tone={ship.tone}
+                className={`h-full w-full ${
+                  ship.tone === 'preview' || ship.tone === 'invalid'
+                    ? 'opacity-80'
+                    : 'drop-shadow-[0_1px_2px_rgba(2,8,23,0.65)]'
+                }`}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -164,13 +254,24 @@ function Cell({
   onCellEnter,
 }: CellProps) {
   const sunk = state === 'hit' && ship?.sunk;
+  // Revealed hulls are drawn as one sprite across the whole ship, so those cells
+  // stay water-coloured and only tint to show damage underneath the sprite.
+  const underShip = revealShips && !!ship;
   const classes = ['aspect-square rounded-[3px] border transition-colors duration-150'];
 
   if (isPreview) {
     classes.push(
       previewValid
-        ? 'border-emerald-200 bg-emerald-400'
-        : 'border-rose-200 bg-rose-500',
+        ? 'border-emerald-300/70 bg-emerald-500/25'
+        : 'border-rose-300/70 bg-rose-500/30',
+    );
+  } else if (underShip) {
+    classes.push(
+      sunk
+        ? 'border-rose-500/60 bg-rose-900/50'
+        : state === 'hit'
+          ? 'border-amber-400/60 bg-amber-500/20'
+          : 'border-sea-600 bg-sea-800',
     );
   } else if (sunk) {
     classes.push('border-rose-900 bg-rose-800');
@@ -178,8 +279,6 @@ function Cell({
     classes.push('border-rose-400 bg-rose-500');
   } else if (state === 'miss') {
     classes.push('border-sea-600 bg-sea-700');
-  } else if (revealShips && ship) {
-    classes.push('border-slate-400 bg-slate-300');
   } else {
     classes.push('border-sea-600 bg-sea-800');
   }
@@ -208,7 +307,7 @@ function Cell({
       {state === 'miss' && (
         <span className="mx-auto block h-1/3 w-1/3 animate-splash rounded-full bg-slate-300/80" />
       )}
-      {state === 'hit' && (
+      {state === 'hit' && !underShip && (
         <span
           className={`mx-auto block h-1/2 w-1/2 rounded-full ${
             isLastShot ? 'animate-blast' : ''

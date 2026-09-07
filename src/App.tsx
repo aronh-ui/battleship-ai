@@ -200,6 +200,7 @@ export default function App() {
             interactive={game.phase === 'setup' && !setupComplete}
             previewCells={preview.cells}
             previewValid={preview.valid}
+            previewShip={nextShip ? { name: nextShip.name, orientation } : null}
             lastShot={lastAiEntry?.coord ?? null}
             label="Your board"
             onCellClick={handlePlace}

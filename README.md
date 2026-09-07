@@ -27,16 +27,15 @@ hunts with a checkerboard search pattern and locks onto ships once it draws bloo
   and its own memory — so it never leaks a cell it has not already fired at.
 - **AI Arms Race theme** — your fleet is the Cognition Carrier, Agent Battleship, Code
   Cruiser, Autonomous Submarine and Bug Destroyer; the enemy fleet is Legacy Code,
-  Technical Debt, Bugs, Manual Work and Slow Releases, named in the hit/sink feedback.
-  A hidden competitor mode (type `devin`, or use the subtle sidebar toggle) renames two
-  enemy targets; text labels only, no third-party logos or marks.
+  Technical Debt, Bugs, Claude Carrier and Cursor Cruiser, named in the hit/sink feedback.
+  A hidden mode (type `devin`, or use the subtle sidebar toggle) renames the enemy
+  flagship to Copilot Carrier; text labels only, no third-party logos or marks.
 - **Living battlefield** — animated water, a sonar sweep over the waters you are
   scanning, cell-sized impact and splash effects, smoke on damaged hulls and a settling
   animation on a sink. All CSS keyframes and inline SVG, no media files.
-- **Audio** — an original score and effects synthesised in the browser with the Web Audio
-  API, with scenes for the menu, placement, battle, the AI's turn, the last ships afloat,
-  victory and defeat. Master / music / effects volume and mute, persisted between visits.
-  Nothing plays before you interact with the page. See [AUDIO_LICENSES.md](AUDIO_LICENSES.md).
+- **Audio** — "Clash Defiant" by Kevin MacLeod (CC BY 4.0) loops for the whole match, with
+  master / music volume and mute persisted between visits. Nothing plays before you
+  interact with the page. Attribution in [AUDIO_LICENSES.md](AUDIO_LICENSES.md).
 - **Mission report** — the end of a game shows your real statistics (shots, hits,
   accuracy, targets destroyed, survivors), the opponent's for comparison, the AI's full
   fleet layout, and `Play again`, which resets all state.
@@ -76,13 +75,13 @@ src/
     *.test.ts      Vitest suites for the engine
     stats.ts       end-of-game statistics derived from the shot log
   theme/           presentation-only naming (AI Arms Race fleets, competitor mode)
-  audio/           procedural Web Audio engine, React provider, persisted levels
+  audio/           looped music track player, React provider, persisted levels
   components/      presentational React components
     GameBoard.tsx  10x10 grid renderer (own board, enemy board, reveal mode, FX)
     ShipSprite.tsx SVG ship silhouettes (per class, length, orientation, damage)
     FleetStatus.tsx  ships remaining / damage for one side
     AiCommandCenter.tsx  the AI's reasoning, staged during its turn
-    AudioControls.tsx    mute plus master / music / effects volume
+    AudioControls.tsx    mute plus master / music volume, track attribution
     MissionReport.tsx    end-of-game statistics and fleet reveal
   App.tsx          the only stateful component: owns GameState and wires the UI
 ```
@@ -229,10 +228,6 @@ bundle is then served from the domain root.
   memory of damaged ships.
 - The QA playthrough and adversarial scripts need a Chrome instance exposing a CDP
   endpoint; they are developer tools, not part of `npm test`.
-- The music and sound effects are synthesised at runtime rather than recorded, which keeps
-  the repository free of licensed media but sounds thinner than a produced score; see
-  [AUDIO_LICENSES.md](AUDIO_LICENSES.md) for the reasoning and how to swap in licensed
-  tracks.
-- The competitor easter egg renames two existing enemy ships (Carrier and Cruiser) rather
-  than adding new ones, so the fleet composition and every rule stay identical whether it
-  is on or off.
+- A single 12 MB music track is shipped in `public/audio/`; there are no sound effects.
+- The hidden mode renames an existing enemy ship rather than adding one, so the fleet
+  composition and every rule stay identical whether it is on or off.

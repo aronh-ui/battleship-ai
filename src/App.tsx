@@ -53,6 +53,7 @@ export default function App() {
   const [orientation, setOrientation] = useState<Orientation>('horizontal');
   const [hover, setHover] = useState<Coord | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [commandOpen, setCommandOpen] = useState(false);
   const [armsRace, setArmsRace] = useState<boolean>(readArmsRace);
   const [plan, setPlan] = useState<PlanSnapshot>({ turn: -1, steps: [] });
   const noticeTimer = useRef<number | undefined>(undefined);
@@ -399,6 +400,8 @@ export default function App() {
               plan={plan.steps}
               verdict={verdict}
               stepMs={COMMAND_STEP_MS}
+              open={commandOpen}
+              onToggle={() => setCommandOpen((v) => !v)}
             />
           </div>
           <FleetStatus

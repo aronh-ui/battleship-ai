@@ -229,7 +229,7 @@ These were specifically looked for and did not reproduce:
 # Round 3 — "AI Arms Race" product pass
 
 Testing performed on the cinematic layer (AI Command Center, themed fleets, competitor
-easter egg, combat FX, procedural audio, mission report), locally and against
+easter egg, combat FX, audio, mission report), locally and against
 https://aronh-ui.github.io/battleship-ai/.
 
 | Check | How | Result |

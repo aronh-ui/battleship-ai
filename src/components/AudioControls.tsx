@@ -4,7 +4,6 @@ import { useAudio } from '../audio/context';
 const SLIDERS = [
   { key: 'master', label: 'Master' },
   { key: 'music', label: 'Music' },
-  { key: 'sfx', label: 'Effects' },
 ] as const;
 
 export function AudioControls() {
@@ -65,8 +64,20 @@ export function AudioControls() {
           ))}
           <p className="mt-1 text-[0.65rem] leading-snug text-slate-400">
             {enabled
-              ? 'Audio is generated live in your browser — no audio files.'
-              : 'Audio starts after your first click, per browser autoplay rules.'}
+              ? 'Music loops for the whole match.'
+              : 'Music starts after your first click, per browser autoplay rules.'}
+          </p>
+          <p className="mt-1.5 text-[0.6rem] leading-snug text-slate-500">
+            "Clash Defiant" Kevin MacLeod (incompetech.com). Licensed under Creative
+            Commons: By Attribution 4.0 —{' '}
+            <a
+              href="http://creativecommons.org/licenses/by/4.0/"
+              target="_blank"
+              rel="noreferrer"
+              className="underline hover:text-slate-300"
+            >
+              CC BY 4.0
+            </a>
           </p>
         </div>
       )}

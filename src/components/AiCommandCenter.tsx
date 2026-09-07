@@ -17,6 +17,8 @@ interface AiCommandCenterProps {
   verdict: CommandVerdict | null;
   /** Delay between reasoning steps, matched to the AI's thinking pause. */
   stepMs: number;
+  open: boolean;
+  onToggle: () => void;
 }
 
 const STAGE_LABEL: Record<string, string> = {
@@ -48,6 +50,8 @@ export function AiCommandCenter({
   plan,
   verdict,
   stepMs,
+  open,
+  onToggle,
 }: AiCommandCenterProps) {
   // The parent remounts this panel each AI turn, so the reveal starts fresh.
   const [visible, setVisible] = useState(active ? 1 : plan.length);
@@ -71,8 +75,15 @@ export function AiCommandCenter({
       data-testid="command-center"
       className="rounded-lg border border-cyan-500/30 bg-sea-800/70 p-3"
     >
-      <header className="mb-2 flex items-center justify-between">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        data-testid="command-toggle"
+        className={`flex w-full items-center justify-between text-left ${open ? 'mb-2' : ''}`}
+      >
         <h3 className="text-xs font-semibold uppercase tracking-[0.15em] text-cyan-300">
+          <span className="mr-1.5 inline-block text-cyan-400/70">{open ? '▾' : '▸'}</span>
           AI Command Center
         </h3>
         <span
@@ -88,8 +99,18 @@ export function AiCommandCenter({
           />
           {active ? 'Engaged' : 'Standing by'}
         </span>
-      </header>
+      </button>
 
+      {!open && (
+        <p className="mt-1.5 truncate text-[0.68rem] text-slate-400">
+          {active
+            ? steps[steps.length - 1]?.label
+            : verdictText?.label ?? 'Click to watch the AI reason'}
+        </p>
+      )}
+
+      {open && (
+        <>
       <ol className="space-y-1.5">
         {steps.map((step, index) => (
           <li
@@ -138,6 +159,8 @@ export function AiCommandCenter({
           ? 'Smart mode: searches on a checkerboard, then locks onto a hull once it lands a hit.'
           : 'Easy mode: fires at a random untried cell and forgets what it learned.'}
       </p>
+        </>
+      )}
     </section>
   );
 }

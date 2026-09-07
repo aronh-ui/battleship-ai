@@ -19,17 +19,17 @@ const ENEMY_NAMES: Record<ShipName, string> = {
   Carrier: 'Legacy Code',
   Battleship: 'Technical Debt',
   Cruiser: 'Bugs',
-  Submarine: 'Manual Work',
-  Destroyer: 'Slow Releases',
+  Submarine: 'Claude Carrier',
+  Destroyer: 'Cursor Cruiser',
 };
 
-/** Hidden mode: two of the enemy targets are renamed after other AI coding tools. */
+/** Hidden mode: the enemy flagship is renamed after another AI coding tool. */
 const ARMS_RACE_NAMES: Partial<Record<ShipName, string>> = {
   Carrier: 'Copilot Carrier',
-  Cruiser: 'Cursor Cruiser',
 };
 
-export const ARMS_RACE_SHIPS: readonly ShipName[] = ['Carrier', 'Cruiser'];
+/** Sinking all of these in hidden mode triggers the arms-race completion copy. */
+export const ARMS_RACE_SHIPS: readonly ShipName[] = ['Carrier', 'Destroyer'];
 
 export function playerShipName(name: ShipName): string {
   return PLAYER_NAMES[name];
@@ -51,7 +51,7 @@ export function shipDisplayName(
 export function sunkVerb(name: ShipName, side: 'player' | 'enemy', armsRace: boolean) {
   if (side === 'player') return 'DESTROYED';
   if (armsRace && name === 'Carrier') return 'ELIMINATED';
-  if (armsRace && name === 'Cruiser') return 'SUNK';
+  if (name === 'Destroyer') return 'SUNK';
   return 'DESTROYED';
 }
 

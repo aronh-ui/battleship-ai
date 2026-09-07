@@ -1,41 +1,24 @@
 # Audio licenses
 
-**This project ships no audio files.** Every sound in the game — music beds and
-sound effects alike — is synthesised in the browser at runtime with the Web Audio
-API (oscillators, gain envelopes, filters and an in-memory noise buffer generated
-from `Math.random()`), in `src/audio/engine.ts`.
+The game plays one music track, looped for the whole experience. There are no sound
+effects and no other audio assets.
 
-There are therefore no external audio assets, no third-party samples, no
-downloaded or ripped media, and no attribution requirements. The repository
-contains no `.mp3`, `.ogg`, `.wav` or other media binaries.
+| Filename | Track | Creator | Source | License | Attribution required |
+| --- | --- | --- | --- | --- | --- |
+| `public/audio/clash-defiant.mp3` | Clash Defiant (ISRC USUAN1600003) | Kevin MacLeod (incompetech.com) | https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1600003 | Creative Commons: By Attribution 4.0 — https://creativecommons.org/licenses/by/4.0/ | Yes |
 
-| Asset | Source | License | Attribution |
-| --- | --- | --- | --- |
-| _(none)_ | — | — | — |
+## Attribution text
 
-## Why procedural audio
+> "Clash Defiant" Kevin MacLeod (incompetech.com)
+> Licensed under Creative Commons: By Attribution 4.0 License
+> http://creativecommons.org/licenses/by/4.0/
 
-- **Zero licensing ambiguity.** Nothing has to be verified as usable in a public
-  repository and a public deployment, because nothing was sourced externally.
-- **No large media files.** The whole audio layer is a few kB of TypeScript
-  instead of megabytes of tracks, which keeps the static bundle small.
-- **Adaptive by construction.** Scenes (menu, setup, battle, AI turn, last stand,
-  victory, defeat) crossfade by re-scheduling the synth rather than by streaming
-  and beat-matching separate files.
-
-The compositions are original: simple modal chord beds with an arpeggiated
-sequence over them. They are not modelled on, and do not attempt to evoke, any
-identifiable existing score, franchise theme or artist's work. The trade-off is
-honest to state: synthesised music is thinner than a professionally recorded
-cinematic score. If richer audio is ever wanted, replace the engine with properly
-licensed royalty-free tracks and document each file in the table above with
-filename, track name, creator, source URL, license and required attribution text.
+This attribution is shown in the in-game audio controls and reproduced here as required
+by the license. The file is unmodified apart from being renamed.
 
 ## Runtime behaviour
 
-- No audio node is created and no sound is played before the first user
-  interaction: the audio context is constructed lazily on the first `pointerdown`
-  or `keydown` (see `src/audio/AudioProvider.tsx`), which satisfies
-  browser autoplay policies.
-- Master, music and effects volumes plus mute are user-controlled and persisted
-  in `localStorage`.
+- Nothing plays before the first pointer or keyboard interaction (browser autoplay policy).
+- The track starts on the first interaction and loops; it pauses only when the game has
+  no scene to play.
+- Master volume, music volume and mute persist in `localStorage`.

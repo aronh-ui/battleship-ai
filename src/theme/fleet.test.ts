@@ -25,14 +25,15 @@ describe('fleet theme', () => {
 
   it('uses the themed enemy names by default', () => {
     expect(enemyShipName('Battleship')).toBe('Technical Debt');
-    expect(enemyShipName('Destroyer')).toBe('Slow Releases');
+    expect(enemyShipName('Submarine')).toBe('Claude Carrier');
+    expect(enemyShipName('Destroyer')).toBe('Cursor Cruiser');
   });
 
-  it('renames only the two competitor targets in arms race mode', () => {
+  it('renames only the flagship in arms race mode', () => {
     expect(enemyShipName('Carrier', true)).toBe('Copilot Carrier');
-    expect(enemyShipName('Cruiser', true)).toBe('Cursor Cruiser');
+    expect(enemyShipName('Destroyer', true)).toBe('Cursor Cruiser');
     expect(enemyShipName('Battleship', true)).toBe('Technical Debt');
-    expect(ARMS_RACE_SHIPS).toEqual(['Carrier', 'Cruiser']);
+    expect(ARMS_RACE_SHIPS).toEqual(['Carrier', 'Destroyer']);
   });
 
   it('never renames the player fleet in arms race mode', () => {
@@ -43,7 +44,7 @@ describe('fleet theme', () => {
 
   it('uses competitor-specific sink wording only in arms race mode', () => {
     expect(sunkVerb('Carrier', 'enemy', true)).toBe('ELIMINATED');
-    expect(sunkVerb('Cruiser', 'enemy', true)).toBe('SUNK');
+    expect(sunkVerb('Destroyer', 'enemy', false)).toBe('SUNK');
     expect(sunkVerb('Carrier', 'enemy', false)).toBe('DESTROYED');
     expect(sunkVerb('Carrier', 'player', true)).toBe('DESTROYED');
   });

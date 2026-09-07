@@ -190,6 +190,78 @@ export function updateAiState(state: AiState, result: AttackResult): AiState {
   return state;
 }
 
+export type AiStage = 'observe' | 'reason' | 'act';
+
+export interface AiThought {
+  stage: AiStage;
+  label: string;
+  detail: string;
+}
+
+/**
+ * The reasoning the AI is about to apply, derived from the same data `chooseMove`
+ * uses: the defender's visible attack grid and the AI's own memory of unresolved
+ * hits. Nothing here depends on where ships actually are.
+ */
+export function aiPlan(board: Board, state: AiState): AiThought[] {
+  const untried = allUntried(board);
+  const targeting = state.difficulty === 'smart' && state.pendingHits.length > 0;
+  const steps: AiThought[] = [
+    {
+      stage: 'observe',
+      label: 'Scanning grid',
+      detail: `${untried.length} cells unresolved`,
+    },
+  ];
+
+  if (targeting) {
+    const connected = connectedGroup(state.pendingHits);
+    const line = connected.length >= 2 ? lineExtensions(board, connected) : [];
+    steps.push({
+      stage: 'observe',
+      label: 'Analyzing previous hits',
+      detail: `${state.pendingHits.length} damaged cell${
+        state.pendingHits.length === 1 ? '' : 's'
+      } still unresolved`,
+    });
+    if (line.length > 0) {
+      const horizontal = connected.every((c) => c.row === connected[0].row);
+      steps.push({
+        stage: 'reason',
+        label: 'Detecting ship orientation',
+        detail: `${horizontal ? 'Horizontal' : 'Vertical'} hull confirmed — extending the line`,
+      });
+    } else {
+      steps.push({
+        stage: 'reason',
+        label: 'Probing adjacent cells',
+        detail: 'Orientation unknown — testing the neighbours of a known hit',
+      });
+    }
+  } else if (state.difficulty === 'smart') {
+    const parity = parityCells(untried);
+    steps.push({
+      stage: 'reason',
+      label: 'Eliminating impossible targets',
+      detail: `Every hull must cover one of ${parity.length} checkerboard cells — skipping the other ${untried.length - parity.length}`,
+    });
+  } else {
+    steps.push({
+      stage: 'reason',
+      label: 'Sampling at random',
+      detail: 'Easy mode ignores what it has learned so far',
+    });
+  }
+
+  steps.push({
+    stage: 'act',
+    label: targeting ? 'Target acquired' : 'Selecting optimal target',
+    detail: targeting ? 'Locking on to the damaged hull' : 'Highest-value untried cell',
+  });
+  steps.push({ stage: 'act', label: 'Firing', detail: 'Solution locked' });
+  return steps;
+}
+
 export function aiMode(state: AiState): AiMode {
   return state.difficulty === 'smart' && state.pendingHits.length > 0
     ? 'target'

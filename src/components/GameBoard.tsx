@@ -20,6 +20,13 @@ interface ShipOverlay {
   tone: ShipTone;
 }
 
+export interface BoardImpact {
+  coord: Coord;
+  outcome: 'hit' | 'miss' | 'sunk';
+  /** Changes on every shot so the animation replays. */
+  id: number;
+}
+
 export interface GameBoardProps {
   board: Board;
   /** Show ship hulls that have not been hit (own board, or the AI board after the game). */
@@ -30,10 +37,27 @@ export interface GameBoardProps {
   previewValid?: boolean;
   previewShip?: { name: ShipName; orientation: Orientation } | null;
   lastShot?: Coord | null;
+  /** Sweeping sonar overlay — used while this board is being scanned. */
+  sonar?: boolean;
+  impact?: BoardImpact | null;
   label: string;
   onCellClick?: (coord: Coord) => void;
   onCellEnter?: (coord: Coord) => void;
   onLeave?: () => void;
+}
+
+/** Grid placement for an element covering `length` cells from `origin`. */
+function cellArea(origin: Coord, length: number, orientation: Orientation) {
+  return {
+    gridColumn:
+      orientation === 'horizontal'
+        ? `${origin.col + 2} / span ${length}`
+        : `${origin.col + 2}`,
+    gridRow:
+      orientation === 'vertical'
+        ? `${origin.row + 2} / span ${length}`
+        : `${origin.row + 2}`,
+  };
 }
 
 export function GameBoard({
@@ -45,6 +69,8 @@ export function GameBoard({
   previewValid = true,
   previewShip = null,
   lastShot = null,
+  sonar = false,
+  impact = null,
   label,
   onCellClick,
   onCellEnter,
@@ -86,6 +112,16 @@ export function GameBoard({
     });
   }, [board.ships, board.grid, revealShips]);
 
+  /** Cells of revealed, still-floating ships that are burning. */
+  const smokingCells = useMemo(() => {
+    if (!revealShips) return [] as Coord[];
+    return board.ships
+      .filter((ship) => !isSunk(ship))
+      .flatMap((ship) =>
+        ship.cells.filter((cell) => board.grid[cell.row][cell.col] === 'hit'),
+      );
+  }, [board.ships, board.grid, revealShips]);
+
   const previewOverlay = useMemo<ShipOverlay | null>(() => {
     if (!previewShip || previewCells.length === 0) return null;
     return {
@@ -101,11 +137,26 @@ export function GameBoard({
 
   return (
     <div
-      className="select-none"
+      className="relative select-none overflow-hidden rounded-lg p-1"
       onMouseLeave={onLeave}
       aria-label={label}
       role="grid"
     >
+      {/* Living water: a slow gradient swell behind the grid. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 animate-swell bg-[radial-gradient(120%_90%_at_20%_0%,rgba(28,98,148,0.35),transparent_60%),radial-gradient(100%_80%_at_80%_100%,rgba(13,52,80,0.5),transparent_65%)] bg-[length:220%_220%]"
+      />
+      {sonar && (
+        <div
+          aria-hidden
+          data-testid="sonar"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden"
+        >
+          <div className="h-[140%] w-[140%] animate-sweep bg-[conic-gradient(from_0deg,rgba(34,211,238,0.16),transparent_28%)]" />
+        </div>
+      )}
+
       <div className="relative grid grid-cols-[1.25rem_repeat(10,minmax(0,1fr))] gap-[2px] sm:gap-[3px]">
         <div />
         {COLUMN_LABELS.map((c) => (
@@ -143,17 +194,10 @@ export function GameBoard({
           {[...overlays, ...(previewOverlay ? [previewOverlay] : [])].map((ship) => (
             <div
               key={ship.id}
-              className="self-stretch justify-self-stretch p-[1px]"
-              style={{
-                gridColumn:
-                  ship.orientation === 'horizontal'
-                    ? `${ship.origin.col + 2} / span ${ship.length}`
-                    : `${ship.origin.col + 2}`,
-                gridRow:
-                  ship.orientation === 'vertical'
-                    ? `${ship.origin.row + 2} / span ${ship.length}`
-                    : `${ship.origin.row + 2}`,
-              }}
+              className={`self-stretch justify-self-stretch p-[1px] ${
+                ship.tone === 'sunk' ? 'animate-settle' : ''
+              }`}
+              style={cellArea(ship.origin, ship.length, ship.orientation)}
             >
               <ShipSprite
                 name={ship.name}
@@ -169,6 +213,35 @@ export function GameBoard({
               />
             </div>
           ))}
+
+          {smokingCells.map((cell) => (
+            <div
+              key={`smoke-${key(cell)}`}
+              className="flex items-start justify-center overflow-visible"
+              style={cellArea(cell, 1, 'horizontal')}
+            >
+              <span className="block h-2/3 w-2/3 animate-smoke rounded-full bg-slate-300/60 blur-[2px]" />
+            </div>
+          ))}
+
+          {impact && (
+            <div
+              key={`impact-${impact.id}`}
+              className="flex items-center justify-center"
+              style={cellArea(impact.coord, 1, 'horizontal')}
+            >
+              <span
+                className={`absolute block h-full w-full animate-shock rounded-full border-2 ${
+                  impact.outcome === 'miss' ? 'border-slate-200/70' : 'border-amber-300'
+                }`}
+              />
+              <span
+                className={`block h-full w-full animate-reticle rounded-sm border-2 ${
+                  impact.outcome === 'miss' ? 'border-slate-300/60' : 'border-rose-300'
+                }`}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -271,16 +344,16 @@ function Cell({
         ? 'border-rose-500/60 bg-rose-900/50'
         : state === 'hit'
           ? 'border-amber-400/60 bg-amber-500/20'
-          : 'border-sea-600 bg-sea-800',
+          : 'border-sea-600 bg-sea-800/80',
     );
   } else if (sunk) {
     classes.push('border-rose-900 bg-rose-800');
   } else if (state === 'hit') {
     classes.push('border-rose-400 bg-rose-500');
   } else if (state === 'miss') {
-    classes.push('border-sea-600 bg-sea-700');
+    classes.push('border-sea-600 bg-sea-700/80');
   } else {
-    classes.push('border-sea-600 bg-sea-800');
+    classes.push('border-sea-600 bg-sea-800/70');
   }
 
   if (interactive && !isPreview) {

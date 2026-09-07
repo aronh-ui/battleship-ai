@@ -1,4 +1,5 @@
 import { isSunk, key } from '../engine/board';
+import { shipDisplayName } from '../theme/fleet';
 import { ShipSprite } from './ShipSprite';
 import type { Board } from '../engine/types';
 
@@ -8,11 +9,19 @@ const PIP = 12;
 interface FleetStatusProps {
   board: Board;
   title: string;
+  side: 'player' | 'enemy';
+  armsRace?: boolean;
   /** Per-cell damage is only public knowledge for your own fleet. */
   revealDamage?: boolean;
 }
 
-export function FleetStatus({ board, title, revealDamage = false }: FleetStatusProps) {
+export function FleetStatus({
+  board,
+  title,
+  side,
+  armsRace = false,
+  revealDamage = false,
+}: FleetStatusProps) {
   const afloat = board.ships.filter((s) => !isSunk(s)).length;
   const hitIds = new Set(board.ships.flatMap((s) => s.hits.map(key)));
 
@@ -34,7 +43,7 @@ export function FleetStatus({ board, title, revealDamage = false }: FleetStatusP
                 sunk ? 'text-rose-300 line-through' : 'text-slate-200'
               }`}
             >
-              <span>{ship.name}</span>
+              <span>{shipDisplayName(ship.name, side, armsRace)}</span>
               <ShipSprite
                 name={ship.name}
                 length={ship.length}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  aiPlan,
   chooseMove,
   createAiState,
   parityCells,
@@ -201,5 +202,55 @@ describe('parityCells', () => {
       for (let col = 0; col < BOARD_SIZE; col++) all.push({ row, col });
     }
     expect(parityCells(all)).toHaveLength(50);
+  });
+});
+
+describe('aiPlan', () => {
+  it('describes the checkerboard search while hunting', () => {
+    const plan = aiPlan(createBoard(), createAiState('smart'));
+    expect(plan.map((s) => s.stage)).toEqual(['observe', 'reason', 'act', 'act']);
+    expect(plan[0].detail).toContain('100 cells');
+    expect(plan[1].label).toBe('Eliminating impossible targets');
+    expect(plan[plan.length - 1].label).toBe('Firing');
+  });
+
+  it('switches to a targeting narrative once a hit is unresolved', () => {
+    const board = boardWith([1, { row: 4, col: 4 }, 'horizontal']);
+    const fired = fireAt(board, [{ row: 4, col: 4 }]);
+    const state: AiState = { difficulty: 'smart', pendingHits: [{ row: 4, col: 4 }] };
+    const plan = aiPlan(fired, state);
+    expect(plan.map((s) => s.label)).toContain('Analyzing previous hits');
+    expect(plan.map((s) => s.label)).toContain('Probing adjacent cells');
+    expect(plan.map((s) => s.label)).toContain('Target acquired');
+  });
+
+  it('reports the confirmed orientation once two hits line up', () => {
+    const board = boardWith([1, { row: 4, col: 4 }, 'horizontal']);
+    const fired = fireAt(board, [
+      { row: 4, col: 4 },
+      { row: 4, col: 5 },
+    ]);
+    const state: AiState = {
+      difficulty: 'smart',
+      pendingHits: [
+        { row: 4, col: 4 },
+        { row: 4, col: 5 },
+      ],
+    };
+    const plan = aiPlan(fired, state);
+    const orientation = plan.find((s) => s.label === 'Detecting ship orientation');
+    expect(orientation?.detail).toContain('Horizontal');
+  });
+
+  it('never mentions a cell the AI has not attacked', () => {
+    const board = boardWith([0, { row: 0, col: 0 }, 'horizontal']);
+    const plan = aiPlan(board, createAiState('smart'));
+    const text = plan.map((s) => `${s.label} ${s.detail}`).join(' ');
+    expect(text).not.toMatch(/[A-J](10|[1-9])\b/);
+  });
+
+  it('is honest about easy mode', () => {
+    const plan = aiPlan(createBoard(), createAiState('easy'));
+    expect(plan.map((s) => s.label)).toContain('Sampling at random');
   });
 });

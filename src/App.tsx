@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AiCommandCenter, type CommandVerdict } from './components/AiCommandCenter';
+import { AudioControls } from './components/AudioControls';
 import { FleetStatus } from './components/FleetStatus';
-import { GameBoard } from './components/GameBoard';
-import { GameOverModal } from './components/GameOverModal';
-import { shipCells, validatePlacement } from './engine/board';
+import { GameBoard, type BoardImpact } from './components/GameBoard';
+import { MissionReport } from './components/MissionReport';
+import { useAudio } from './audio/context';
+import { isSunk, shipCells, validatePlacement } from './engine/board';
 import { coordLabel } from './engine/coords';
+import { aiPlan, type AiThought } from './engine/ai';
 import {
   aiAttack,
   autofillPlayerBoard,
@@ -17,25 +21,46 @@ import {
   setDifficulty,
   startGame,
   type GameState,
+  type LogEntry,
 } from './engine/game';
 import { loadGame, saveGame } from './engine/persistence';
-import type { Coord, Difficulty, Orientation } from './engine/types';
+import { gameStats } from './engine/stats';
+import { enemyShipName, playerShipName, sunkVerb } from './theme/fleet';
+import type { Coord, Difficulty, Orientation, Player } from './engine/types';
 
-const AI_THINKING_MS = 650;
+/** Minimum pause before the AI fires, even for a very short reasoning chain. */
+const AI_MIN_THINKING_MS = 700;
+/** Time each reasoning step stays on screen in the command centre. */
+const COMMAND_STEP_MS = 260;
+const ARMS_RACE_KEY = 'battleship-ai:armsrace';
+const ARMS_RACE_CODE = 'devin';
 
 const store = typeof window === 'undefined' ? undefined : window.sessionStorage;
 
+function readArmsRace(): boolean {
+  try {
+    return window.localStorage.getItem(ARMS_RACE_KEY) === 'on';
+  } catch {
+    return false;
+  }
+}
+
 export default function App() {
+  const audio = useAudio();
   const [game, setGame] = useState<GameState>(
     () => loadGame(store) ?? createGame('smart'),
   );
   const [orientation, setOrientation] = useState<Orientation>('horizontal');
   const [hover, setHover] = useState<Coord | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [armsRace, setArmsRace] = useState<boolean>(readArmsRace);
+  const [plan, setPlan] = useState<PlanSnapshot>({ turn: -1, steps: [] });
   const noticeTimer = useRef<number | undefined>(undefined);
+  const soundedLog = useRef<number>(game.log.length);
 
   const nextShip = nextShipToPlace(game);
   const setupComplete = nextShip === null;
+  const aiTurnActive = game.phase === 'playing' && game.turn === 'ai';
 
   const flash = useCallback((message: string) => {
     setNotice(message);
@@ -48,23 +73,90 @@ export default function App() {
   // Surviving an accidental refresh matters more than a pristine URL bar.
   useEffect(() => saveGame(store, game), [game]);
 
-  // The AI takes its shot shortly after the player's, so the result is readable.
   useEffect(() => {
-    if (game.phase !== 'playing' || game.turn !== 'ai') return;
+    try {
+      window.localStorage.setItem(ARMS_RACE_KEY, armsRace ? 'on' : 'off');
+    } catch {
+      // Storage is a convenience here, never a requirement.
+    }
+  }, [armsRace]);
+
+  // The command centre shows the reasoning the AI is about to apply, so the plan
+  // is captured from the board *before* the shot lands, then frozen for the rest
+  // of the round so the verdict stays attached to the reasoning that produced it.
+  if (aiTurnActive && plan.turn !== game.log.length) {
+    setPlan({ turn: game.log.length, steps: aiPlan(game.playerBoard, game.aiState) });
+  }
+
+  const thinkingMs = Math.max(
+    AI_MIN_THINKING_MS,
+    plan.steps.length * COMMAND_STEP_MS + 250,
+  );
+
+  useEffect(() => {
+    if (!aiTurnActive) return;
     const timer = window.setTimeout(() => {
       setGame((current) =>
         current.phase === 'playing' && current.turn === 'ai'
           ? aiAttack(current)
           : current,
       );
-    }, AI_THINKING_MS);
+    }, thinkingMs);
     return () => window.clearTimeout(timer);
-  }, [game.phase, game.turn, game.log.length]);
+  }, [aiTurnActive, game.log.length, thinkingMs]);
+
+  // Music follows the phase of the match; the last ships afloat raise the tension.
+  useEffect(() => {
+    if (game.phase === 'setup') {
+      audio.setScene(game.playerBoard.ships.length === 0 ? 'menu' : 'setup');
+      return;
+    }
+    if (game.phase === 'gameover') {
+      audio.setScene(game.winner === 'human' ? 'victory' : 'defeat');
+      return;
+    }
+    const afloat = Math.min(
+      game.playerBoard.ships.filter((s) => !isSunk(s)).length,
+      game.aiBoard.ships.filter((s) => !isSunk(s)).length,
+    );
+    audio.setScene(afloat <= 2 ? 'lastStand' : 'battle');
+  }, [game.phase, game.winner, game.playerBoard, game.aiBoard, audio]);
+
+  // One shot, one sound: fire, then the result a beat later.
+  useEffect(() => {
+    if (game.log.length === soundedLog.current) return;
+    soundedLog.current = game.log.length;
+    const entry = game.log[game.log.length - 1];
+    if (!entry) return;
+    audio.play(entry.player === 'human' ? 'fire' : 'aiFire');
+    const timer = window.setTimeout(() => {
+      audio.play(
+        entry.outcome === 'sunk' ? 'sink' : entry.outcome === 'hit' ? 'hit' : 'miss',
+      );
+    }, 240);
+    return () => window.clearTimeout(timer);
+  }, [game.log, audio]);
 
   useEffect(() => {
+    if (game.phase !== 'gameover' || !game.winner) return;
+    const timer = window.setTimeout(
+      () => audio.play(game.winner === 'human' ? 'victory' : 'defeat'),
+      500,
+    );
+    return () => window.clearTimeout(timer);
+  }, [game.phase, game.winner, audio]);
+
+  // Rotate with R; typing the hidden code unlocks the AI Arms Race targets.
+  useEffect(() => {
+    let typed = '';
     const onKey = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() === 'r' && game.phase === 'setup') {
         setOrientation((o) => (o === 'horizontal' ? 'vertical' : 'horizontal'));
+      }
+      typed = (typed + event.key.toLowerCase()).slice(-ARMS_RACE_CODE.length);
+      if (typed === ARMS_RACE_CODE) {
+        typed = '';
+        setArmsRace((on) => !on);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -93,14 +185,17 @@ export default function App() {
       nextShip.length,
       orientation,
     );
+    const label = playerShipName(nextShip.name);
     if (error) {
+      audio.play('invalid');
       flash(
         error === 'off-board'
-          ? `${nextShip.name} (${nextShip.length}) does not fit there — it would run off the board.`
-          : `${nextShip.name} (${nextShip.length}) would overlap another ship.`,
+          ? `${label} (${nextShip.length}) does not fit there — it would run off the board.`
+          : `${label} (${nextShip.length}) would overlap another ship.`,
       );
       return;
     }
+    audio.play('place');
     setGame((g) => placePlayerShip(g, coord, orientation));
   };
 
@@ -110,11 +205,60 @@ export default function App() {
   };
 
   const lastEntry = game.log[game.log.length - 1];
-  const lastAiEntry = [...game.log].reverse().find((e) => e.player === 'ai');
-  const playerShots = game.log.filter((e) => e.player === 'human').length;
+  const lastHuman = lastShotBy(game.log, 'human');
+  const lastAi = lastShotBy(game.log, 'ai');
+  const lastAiEntry = lastAi?.entry;
 
-  const changeDifficulty = (difficulty: Difficulty) =>
+  /** Name of the player ship occupying a cell — always visible to the player. */
+  const playerShipAt = useCallback(
+    (coord: Coord) =>
+      game.playerBoard.ships.find((ship) =>
+        ship.cells.some((c) => c.row === coord.row && c.col === coord.col),
+      ),
+    [game.playerBoard.ships],
+  );
+
+  const eventLine = useMemo(() => {
+    if (!lastEntry) return 'Take the first shot.';
+    const at = coordLabel(lastEntry.coord);
+    if (lastEntry.player === 'human') {
+      if (lastEntry.outcome === 'sunk' && lastEntry.shipName) {
+        const name = enemyShipName(lastEntry.shipName, armsRace).toUpperCase();
+        return `${name} — ${sunkVerb(lastEntry.shipName, 'enemy', armsRace)}`;
+      }
+      // Naming a merely damaged enemy target would leak its length, so hits stay generic.
+      return lastEntry.outcome === 'hit'
+        ? `DIRECT HIT AT ${at} — TARGET DAMAGED`
+        : `${at} — NO CONTACT`;
+    }
+    const ship = playerShipAt(lastEntry.coord);
+    if (lastEntry.outcome === 'sunk' && ship) {
+      return `${playerShipName(ship.name).toUpperCase()} — DESTROYED`;
+    }
+    if (lastEntry.outcome === 'hit' && ship) {
+      return `${playerShipName(ship.name).toUpperCase()} — HIT AT ${at}`;
+    }
+    return `ENEMY FIRED AT ${at} — MISS`;
+  }, [lastEntry, armsRace, playerShipAt]);
+
+  const verdict = ((): CommandVerdict | null => {
+    if (!lastAiEntry) return null;
+    const ship = playerShipAt(lastAiEntry.coord);
+    return {
+      coord: coordLabel(lastAiEntry.coord),
+      outcome: lastAiEntry.outcome === 'invalid' ? 'miss' : lastAiEntry.outcome,
+      target: ship ? playerShipName(ship.name) : undefined,
+      reason: lastAiEntry.reason,
+    };
+  })();
+
+
+  const changeDifficulty = (difficulty: Difficulty) => {
+    audio.play('click');
     setGame((g) => setDifficulty(g, difficulty));
+  };
+
+  const stats = useMemo(() => gameStats(game), [game]);
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 p-3 sm:p-6">
@@ -123,12 +267,13 @@ export default function App() {
           <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
             Battleship<span className="text-cyan-400"> AI</span>
           </h1>
-          <p className="text-xs text-slate-400 sm:text-sm">
-            Sink the enemy fleet before it sinks yours.
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400 sm:text-sm">
+            Observe · Reason · Act · Verify
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <AudioControls />
           <span className="text-xs uppercase tracking-wide text-slate-400">
             Difficulty
           </span>
@@ -154,30 +299,33 @@ export default function App() {
 
       {game.phase === 'setup' ? (
         <SetupBar
-          shipName={nextShip?.name}
+          shipName={nextShip ? playerShipName(nextShip.name) : undefined}
           shipLength={nextShip?.length}
           orientation={orientation}
           setupComplete={setupComplete}
-          onRotate={() =>
-            setOrientation((o) => (o === 'horizontal' ? 'vertical' : 'horizontal'))
-          }
-          onRandomize={() => setGame((g) => randomizePlayerBoard(g))}
-          onAutofill={() => setGame((g) => autofillPlayerBoard(g))}
-          onClear={() => setGame((g) => clearPlayerBoard(g))}
-          onStart={() => setGame((g) => startGame(g))}
+          onRotate={() => {
+            audio.play('rotate');
+            setOrientation((o) => (o === 'horizontal' ? 'vertical' : 'horizontal'));
+          }}
+          onRandomize={() => {
+            audio.play('place');
+            setGame((g) => randomizePlayerBoard(g));
+          }}
+          onAutofill={() => {
+            audio.play('place');
+            setGame((g) => autofillPlayerBoard(g));
+          }}
+          onClear={() => {
+            audio.play('click');
+            setGame((g) => clearPlayerBoard(g));
+          }}
+          onStart={() => {
+            audio.play('sonar');
+            setGame((g) => startGame(g));
+          }}
         />
       ) : (
-        <TurnBar
-          turn={game.turn}
-          phase={game.phase}
-          lastEvent={
-            lastEntry
-              ? `${lastEntry.player === 'human' ? 'You' : 'Enemy'} fired at ${coordLabel(
-                  lastEntry.coord,
-                )} — ${lastEntry.outcome === 'sunk' ? `sunk the ${lastEntry.shipName}!` : lastEntry.outcome}`
-              : 'Take the first shot.'
-          }
-        />
+        <TurnBar turn={game.turn} phase={game.phase} lastEvent={eventLine} />
       )}
 
       {notice && (
@@ -189,7 +337,7 @@ export default function App() {
         </div>
       )}
 
-      <main className="grid gap-5 lg:grid-cols-[1fr_1fr_15rem]">
+      <main className="grid gap-5 lg:grid-cols-[1fr_1fr_16rem]">
         <section className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
             Your waters
@@ -202,6 +350,8 @@ export default function App() {
             previewValid={preview.valid}
             previewShip={nextShip ? { name: nextShip.name, orientation } : null}
             lastShot={lastAiEntry?.coord ?? null}
+            sonar={aiTurnActive}
+            impact={impactOf(lastAi)}
             label="Your board"
             onCellClick={handlePlace}
             onCellEnter={setHover}
@@ -217,43 +367,115 @@ export default function App() {
             board={game.aiBoard}
             revealShips={game.phase === 'gameover'}
             interactive={game.phase === 'playing' && game.turn === 'human'}
-            lastShot={
-              [...game.log].reverse().find((e) => e.player === 'human')?.coord ?? null
-            }
+            lastShot={lastHuman?.entry.coord ?? null}
+            sonar={game.phase === 'playing' && game.turn === 'human'}
+            impact={impactOf(lastHuman)}
             label="Enemy board"
             onCellClick={handleFire}
           />
           {game.phase === 'setup' && (
             <p className="text-xs text-slate-400">
-              Enemy ships are hidden until the battle ends.
+              Enemy positions stay hidden until the battle ends.
             </p>
           )}
         </section>
 
         <aside className="space-y-3">
-          <FleetStatus board={game.playerBoard} title="Your fleet" revealDamage />
-          <FleetStatus board={game.aiBoard} title="Enemy fleet" />
-          <AiExplainer
+          <AiCommandCenter
+            key={`${plan.turn}-${aiTurnActive}`}
+            active={aiTurnActive}
             difficulty={game.difficulty}
-            reason={lastAiEntry?.reason}
-            coord={lastAiEntry ? coordLabel(lastAiEntry.coord) : undefined}
+            plan={plan.steps}
+            verdict={verdict}
+            stepMs={COMMAND_STEP_MS}
+          />
+          <FleetStatus
+            board={game.playerBoard}
+            title="Your fleet"
+            side="player"
+            revealDamage
+          />
+          <FleetStatus
+            board={game.aiBoard}
+            title="Enemy targets"
+            side="enemy"
+            armsRace={armsRace}
+          />
+          <ArmsRaceToggle
+            on={armsRace}
+            onToggle={() => {
+              audio.play('click');
+              setArmsRace((v) => !v);
+            }}
           />
         </aside>
       </main>
 
       {game.phase === 'gameover' && game.winner && (
-        <GameOverModal
+        <MissionReport
           winner={game.winner}
           aiBoard={game.aiBoard}
-          shots={playerShots}
+          stats={stats}
+          armsRace={armsRace}
           onPlayAgain={() => {
+            audio.play('click');
             setGame((g) => resetGame(g));
             setOrientation('horizontal');
             setHover(null);
+            setPlan({ turn: -1, steps: [] });
           }}
         />
       )}
     </div>
+  );
+}
+
+/** The AI's reasoning for one turn, tagged with the log length it was taken at. */
+interface PlanSnapshot {
+  turn: number;
+  steps: AiThought[];
+}
+
+interface Shot {
+  entry: LogEntry;
+  index: number;
+}
+
+function lastShotBy(log: LogEntry[], player: Player): Shot | null {
+  for (let index = log.length - 1; index >= 0; index--) {
+    if (log[index].player === player) return { entry: log[index], index };
+  }
+  return null;
+}
+
+/** The log index doubles as an id so each new shot replays its impact animation. */
+function impactOf(shot: Shot | null): BoardImpact | null {
+  if (!shot) return null;
+  const { entry, index } = shot;
+  return {
+    coord: entry.coord,
+    outcome: entry.outcome === 'invalid' ? 'miss' : entry.outcome,
+    id: index,
+  };
+}
+
+function ArmsRaceToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={on}
+      data-testid="arms-race-toggle"
+      className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-[0.65rem] uppercase tracking-[0.2em] transition ${
+        on
+          ? 'border-cyan-400/60 bg-cyan-500/10 text-cyan-200'
+          : 'border-sea-700 bg-transparent text-slate-500 hover:text-slate-300'
+      }`}
+      title="Rename two enemy targets"
+    >
+      <span>AI arms race</span>
+      <span aria-hidden>{on ? '◈' : '◇'}</span>
+    </button>
   );
 }
 
@@ -350,32 +572,12 @@ function TurnBar({
       >
         {!playing ? 'Game over' : turn === 'human' ? 'Your turn' : 'Enemy turn…'}
       </span>
-      <span className="text-sm text-slate-300">{lastEvent}</span>
-    </div>
-  );
-}
-
-function AiExplainer({
-  difficulty,
-  reason,
-  coord,
-}: {
-  difficulty: Difficulty;
-  reason?: string;
-  coord?: string;
-}) {
-  return (
-    <div className="rounded-lg border border-sea-600 bg-sea-800/60 p-3">
-      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-300">
-        How the enemy thinks
-      </h3>
-      <p className="text-xs text-slate-300">
-        {reason
-          ? `${coord}: ${reason}`
-          : difficulty === 'smart'
-            ? 'Smart mode: hunts on a checkerboard pattern, then locks onto a ship once it lands a hit.'
-            : 'Easy mode: fires at random untried cells.'}
-      </p>
+      <span
+        data-testid="event-line"
+        className="text-sm tracking-wide text-slate-300"
+      >
+        {lastEvent}
+      </span>
     </div>
   );
 }

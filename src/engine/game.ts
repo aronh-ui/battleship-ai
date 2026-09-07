@@ -17,6 +17,7 @@ import {
   type Orientation,
   type Phase,
   type Player,
+  type ShipName,
   type ShipSpec,
 } from './types';
 
@@ -24,7 +25,7 @@ export interface LogEntry {
   player: Player;
   coord: Coord;
   outcome: AttackResult['outcome'];
-  shipName?: string;
+  shipName?: ShipName;
   reason?: string;
 }
 

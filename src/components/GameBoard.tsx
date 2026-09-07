@@ -227,7 +227,7 @@ export function GameBoard({
           {impact && (
             <div
               key={`impact-${impact.id}`}
-              className="flex items-center justify-center"
+              className="relative flex items-center justify-center"
               style={cellArea(impact.coord, 1, 'horizontal')}
             >
               <span

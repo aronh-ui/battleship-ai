@@ -77,7 +77,7 @@ export function AiCommandCenter({
         </h3>
         <span
           data-testid="command-status"
-          className={`flex items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wide ${
+          className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[0.65rem] font-semibold uppercase tracking-wide ${
             active ? 'text-amber-300' : 'text-slate-400'
           }`}
         >

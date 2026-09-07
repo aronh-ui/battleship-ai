@@ -223,3 +223,97 @@ These were specifically looked for and did not reproduce:
 - Node 20.18 could not install the Rolldown native binding required by Vite 8
   (`engines: ^20.19.0 || >=22.12.0`); the project is developed and built on Node 22, and
   the requirement is documented in the README.
+
+---
+
+# Round 3 — "AI Arms Race" product pass
+
+Testing performed on the cinematic layer (AI Command Center, themed fleets, competitor
+easter egg, combat FX, procedural audio, mission report), locally and against
+https://aronh-ui.github.io/battleship-ai/.
+
+| Check | How | Result |
+| --- | --- | --- |
+| Engine + presentation unit tests | `npm test` (Vitest, 9 files / 75 tests) | Passing |
+| Type check + bundle | `npm run build` | Passing |
+| Lint | `npm run lint` (oxlint) | Clean, no warnings |
+| Scripted playthrough, desktop / mobile / Easy-win | `npm run qa:playthrough -- <url> [--easy] [--mobile]` | Passing, no console output |
+| Adversarial pass | `npm run qa:adversarial -- <url>` | Passing |
+| Interactive session, desktop + 390×844 | Full games played in a real browser, screenshots reviewed | Three issues found: BUG-7, BUG-8, BUG-9 |
+| AI fairness | ~15 AI turns inspected: no Command Center step ever named an un-attacked cell or an un-sunk ship | Passing |
+| Enemy fleet secrecy | Enemy cells report `unknown` until attacked; positions revealed only in the mission report | Passing |
+| Competitor easter egg | `devin` trigger and sidebar toggle, renamed targets, `SUNK` / `ELIMINATED` copy, both-sunk completion lines | Passing |
+| Audio | No `AudioContext` created before the first interaction; master/music/SFX sliders, mute and persistence across reload | Passing |
+
+New unit tests added this round: `src/engine/stats.test.ts` (statistics come from the real
+log, including the accuracy denominator), `src/theme/fleet.test.ts` (every ship is named on
+both sides, arms-race mode renames only the two competitor targets and never the player
+fleet, sink wording), `src/audio/context.test.ts` (stored volume levels are validated
+field by field and fall back to defaults on corrupt data), and five `aiPlan` cases in
+`src/engine/ai.test.ts` — including one asserting the reasoning text never contains a grid
+coordinate the AI has not attacked.
+
+## BUG-7 — Mission report showed the AI's statistics after a loss
+
+**Reproduction.** Lose a game and read the SHOTS / HITS / ACCURACY panel: it reported
+33 shots · 17 hits · 52% while the player's own log for that game was 33 shots · 11 hits ·
+33%. 17 hits was the AI's tally against the player's fleet.
+
+**Root cause.** `MissionReport.tsx` selected the winner's statistics
+(`const side = won ? stats.player : stats.ai`) while the line directly beneath it always
+used `stats.player`, so a loss screen mixed both sides' numbers with no label saying whose
+they were.
+
+**Fix.** The panel always shows the player's own statistics under an explicit
+"Your performance" heading, with the opponent's shots/hits/accuracy on a separate labelled
+line. Nothing is inferred: every number comes from `gameStats()` over the game log.
+
+**Verification.** Played a full game to a loss and reconciled the reported numbers against
+the shot log cell by cell; `stats.test.ts` covers the underlying computation.
+
+## BUG-8 — Impact ring drew across the whole board instead of one cell
+
+**Reproduction.** Fire at any cell (or get fired at) and watch the shock ring: a white
+circle roughly the size of the entire board expanded over both grids, most visible at
+390×844 where it spilled from the enemy board across the player board.
+
+**Root cause.** The ring is `absolute h-full w-full` inside the impact wrapper, but that
+wrapper was a plain (statically positioned) grid item. The ring therefore resolved its
+size against the nearest positioned ancestor — the full-board overlay layer — so
+`h-full w-full` meant "the whole board", and the `shock` keyframe scaled that by 2.4.
+
+**Fix.** Made the impact wrapper `relative` so the ring is sized to its own cell.
+
+**Verification.** Screenshots of the same shot before and after; the ring is now a
+cell-sized pulse, and the earlier report of a sonar sweep bleeding across the player board
+on mobile came from this same ring and no longer reproduces.
+
+## BUG-9 — Your own sink message was overwritten within a second
+
+**Reproduction.** Sink an enemy ship: `TECHNICAL DEBT — DESTROYED` appeared in the event
+banner and was replaced by the AI's return-fire message roughly one second later, so the
+most rewarding moment in the game was easy to miss entirely. On production the competitor
+sink lines could not even be screenshotted for this reason.
+
+**Root cause.** A single event line rendered `log[log.length - 1]`, and the AI always
+gets the last word.
+
+**Fix.** The turn bar now keeps one line per side — the player's own last result stays on
+screen until their next shot, with the enemy's last shot on a second, quieter line.
+
+**Verification.** Played through several sinks on desktop and mobile; the sink line
+persists through the AI's reply.
+
+## Checks that found nothing this round
+
+- **Core mechanics unchanged.** The engine's ship names, board, placement rules, attack
+  outcomes and AI algorithm are untouched; all 57 pre-existing tests still pass without
+  modification. The themed names are a presentation-layer mapping in `src/theme/fleet.ts`.
+- **Autoplay compliance.** No audio node is constructed before the first `pointerdown` or
+  `keydown`; verified in the browser with a clean page load.
+- **Console cleanliness.** No errors or warnings during full games on desktop, mobile and
+  production.
+- **Restart and refresh.** `Play again` resets to a clean setup screen (arms-race toggle
+  correctly persists, game state does not); mid-game refresh still restores the game.
+- **Performance.** Effects are CSS keyframes and inline SVG; no measurable jank and no
+  media files in the bundle.

@@ -204,7 +204,6 @@ export default function App() {
     setGame((g) => playerAttack(g, coord));
   };
 
-  const lastEntry = game.log[game.log.length - 1];
   const lastHuman = lastShotBy(game.log, 'human');
   const lastAi = lastShotBy(game.log, 'ai');
   const lastAiEntry = lastAi?.entry;
@@ -218,28 +217,34 @@ export default function App() {
     [game.playerBoard.ships],
   );
 
-  const eventLine = useMemo(() => {
-    if (!lastEntry) return 'Take the first shot.';
-    const at = coordLabel(lastEntry.coord);
-    if (lastEntry.player === 'human') {
-      if (lastEntry.outcome === 'sunk' && lastEntry.shipName) {
-        const name = enemyShipName(lastEntry.shipName, armsRace).toUpperCase();
-        return `${name} — ${sunkVerb(lastEntry.shipName, 'enemy', armsRace)}`;
-      }
-      // Naming a merely damaged enemy target would leak its length, so hits stay generic.
-      return lastEntry.outcome === 'hit'
-        ? `DIRECT HIT AT ${at} — TARGET DAMAGED`
-        : `${at} — NO CONTACT`;
+  // Each side keeps its own line: the AI answers within a second, and a sink
+  // message the player never got to read may as well not have been shown.
+  const yourShotLine = useMemo(() => {
+    const entry = lastHuman?.entry;
+    if (!entry) return 'Take the first shot.';
+    const at = coordLabel(entry.coord);
+    if (entry.outcome === 'sunk' && entry.shipName) {
+      const name = enemyShipName(entry.shipName, armsRace).toUpperCase();
+      return `${name} — ${sunkVerb(entry.shipName, 'enemy', armsRace)}`;
     }
-    const ship = playerShipAt(lastEntry.coord);
-    if (lastEntry.outcome === 'sunk' && ship) {
+    // Naming a merely damaged enemy target would leak its length, so hits stay generic.
+    return entry.outcome === 'hit'
+      ? `DIRECT HIT AT ${at} — TARGET DAMAGED`
+      : `${at} — NO CONTACT`;
+  }, [lastHuman, armsRace]);
+
+  const enemyShotLine = ((): string | null => {
+    if (!lastAiEntry) return null;
+    const at = coordLabel(lastAiEntry.coord);
+    const ship = playerShipAt(lastAiEntry.coord);
+    if (lastAiEntry.outcome === 'sunk' && ship) {
       return `${playerShipName(ship.name).toUpperCase()} — DESTROYED`;
     }
-    if (lastEntry.outcome === 'hit' && ship) {
+    if (lastAiEntry.outcome === 'hit' && ship) {
       return `${playerShipName(ship.name).toUpperCase()} — HIT AT ${at}`;
     }
     return `ENEMY FIRED AT ${at} — MISS`;
-  }, [lastEntry, armsRace, playerShipAt]);
+  })();
 
   const verdict = ((): CommandVerdict | null => {
     if (!lastAiEntry) return null;
@@ -325,7 +330,12 @@ export default function App() {
           }}
         />
       ) : (
-        <TurnBar turn={game.turn} phase={game.phase} lastEvent={eventLine} />
+        <TurnBar
+          turn={game.turn}
+          phase={game.phase}
+          yourShot={yourShotLine}
+          enemyShot={enemyShotLine}
+        />
       )}
 
       {notice && (
@@ -551,11 +561,13 @@ function SetupBar({
 function TurnBar({
   turn,
   phase,
-  lastEvent,
+  yourShot,
+  enemyShot,
 }: {
   turn: 'human' | 'ai';
   phase: GameState['phase'];
-  lastEvent: string;
+  yourShot: string;
+  enemyShot: string | null;
 }) {
   const playing = phase === 'playing';
   return (
@@ -572,12 +584,24 @@ function TurnBar({
       >
         {!playing ? 'Game over' : turn === 'human' ? 'Your turn' : 'Enemy turn…'}
       </span>
-      <span
-        data-testid="event-line"
-        className="text-sm tracking-wide text-slate-300"
-      >
-        {lastEvent}
-      </span>
+      <div className="min-w-0">
+        <p
+          data-testid="event-line"
+          className="text-sm tracking-wide text-slate-100"
+        >
+          <span className="text-slate-500">You: </span>
+          {yourShot}
+        </p>
+        {enemyShot && (
+          <p
+            data-testid="enemy-event-line"
+            className="text-xs tracking-wide text-slate-400"
+          >
+            <span className="text-slate-500">Enemy: </span>
+            {enemyShot}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

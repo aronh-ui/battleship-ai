@@ -20,7 +20,6 @@ export function MissionReport({
   onPlayAgain,
 }: MissionReportProps) {
   const won = winner === 'human';
-  const side = won ? stats.player : stats.ai;
   const competitorsCleared =
     armsRace &&
     ARMS_RACE_SHIPS.every((name) =>
@@ -47,14 +46,17 @@ export function MissionReport({
           {won ? 'Fleet eliminated' : 'Fleet lost'}
         </h2>
 
+        <h3 className="mt-4 text-[0.6rem] font-semibold uppercase tracking-[0.2em] text-slate-400">
+          Your performance
+        </h3>
         <dl
           data-testid="mission-stats"
-          className="mt-4 grid grid-cols-3 gap-2 text-center"
+          className="mt-1 grid grid-cols-3 gap-2 text-center"
         >
           {[
-            { label: 'Shots', value: side.shots },
-            { label: 'Hits', value: side.hits },
-            { label: 'Accuracy', value: `${side.accuracy}%` },
+            { label: 'Shots', value: stats.player.shots },
+            { label: 'Hits', value: stats.player.hits },
+            { label: 'Accuracy', value: `${stats.player.accuracy}%` },
           ].map((item) => (
             <div
               key={item.label}
@@ -69,6 +71,11 @@ export function MissionReport({
             </div>
           ))}
         </dl>
+
+        <p className="mt-2 text-[0.65rem] uppercase tracking-[0.15em] text-slate-400">
+          Opponent: {stats.ai.shots} shots · {stats.ai.hits} hits ·{' '}
+          {stats.ai.accuracy}% accuracy
+        </p>
 
         <p className="mt-3 text-sm uppercase tracking-[0.2em] text-slate-300">
           {won

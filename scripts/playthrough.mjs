@@ -185,7 +185,10 @@ log('# game over');
 await page.waitForSelector('[role="dialog"]', { timeout: 20000 });
 const dialog = page.locator('[role="dialog"]');
 const outcome = await dialog.locator('h2').innerText();
-assert(['Victory!', 'Defeat'].includes(outcome), `win/loss modal shown (${outcome})`);
+assert(
+  ['Fleet eliminated', 'Fleet lost'].includes(outcome),
+  `mission report shown (${outcome})`,
+);
 const revealed = await dialog.evaluate(
   (el) => [...el.querySelectorAll('[aria-label]')].filter((c) => /Carrier|Battleship|Cruiser|Submarine|Destroyer/.test(c.getAttribute('aria-label') ?? '')).length,
 );
@@ -203,7 +206,7 @@ assert(
 );
 
 if (EASY) {
-  assert(outcome === 'Victory!', 'player can win against the easy AI');
+  assert(outcome === 'Fleet eliminated', 'player can win against the easy AI');
 }
 
 log('# console');

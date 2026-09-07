@@ -18,10 +18,28 @@ hunts with a checkerboard search pattern and locks onto ships once it draws bloo
 - **Play phase** — alternating turns, a turn indicator, per-shot feedback, hit/miss/sunk
   markers, and "ships afloat" counts for both sides. Attacked cells cannot be attacked
   again.
-- **AI opponent** — `Smart` (hunt-and-target, default) or `Easy` (random) difficulty,
-  with a panel that explains in plain language why the AI fired where it did.
-- **Game over** — a win/loss modal that reveals the AI's full fleet layout and offers
-  `Play again`, which resets all state.
+- **AI opponent** — `Smart` (hunt-and-target, default) or `Easy` (random) difficulty.
+- **AI Command Center** — during the AI's turn a panel reveals its reasoning as it
+  happens (Observe → Reason → Act → Verify): how many cells are still unresolved, how the
+  checkerboard eliminates the rest, the switch into targeting once it has an unresolved
+  hit, the orientation it has confirmed, and then the verdict on the shot it just took.
+  Every line is derived from the same data the AI itself uses — the visible attack grid
+  and its own memory — so it never leaks a cell it has not already fired at.
+- **AI Arms Race theme** — your fleet is the Cognition Carrier, Agent Battleship, Code
+  Cruiser, Autonomous Submarine and Bug Destroyer; the enemy fleet is Legacy Code,
+  Technical Debt, Bugs, Manual Work and Slow Releases, named in the hit/sink feedback.
+  A hidden competitor mode (type `devin`, or use the subtle sidebar toggle) renames two
+  enemy targets; text labels only, no third-party logos or marks.
+- **Living battlefield** — animated water, a sonar sweep over the waters you are
+  scanning, cell-sized impact and splash effects, smoke on damaged hulls and a settling
+  animation on a sink. All CSS keyframes and inline SVG, no media files.
+- **Audio** — an original score and effects synthesised in the browser with the Web Audio
+  API, with scenes for the menu, placement, battle, the AI's turn, the last ships afloat,
+  victory and defeat. Master / music / effects volume and mute, persisted between visits.
+  Nothing plays before you interact with the page. See [AUDIO_LICENSES.md](AUDIO_LICENSES.md).
+- **Mission report** — the end of a game shows your real statistics (shots, hits,
+  accuracy, targets destroyed, survivors), the opponent's for comparison, the AI's full
+  fleet layout, and `Play again`, which resets all state.
 - Enemy ship positions are never revealed before the game ends, and per-ship damage on
   the enemy fleet panel stays hidden until a ship actually sinks.
 - **Ship artwork** — each ship is drawn as a single inline-SVG silhouette (hull, deck and
@@ -56,11 +74,16 @@ src/
     coords.ts      A1-style coordinate labels
     random.ts      injectable RNG (seeded for deterministic tests)
     *.test.ts      Vitest suites for the engine
+    stats.ts       end-of-game statistics derived from the shot log
+  theme/           presentation-only naming (AI Arms Race fleets, competitor mode)
+  audio/           procedural Web Audio engine, React provider, persisted levels
   components/      presentational React components
-    GameBoard.tsx  10x10 grid renderer (own board, enemy board, reveal mode)
+    GameBoard.tsx  10x10 grid renderer (own board, enemy board, reveal mode, FX)
     ShipSprite.tsx SVG ship silhouettes (per class, length, orientation, damage)
     FleetStatus.tsx  ships remaining / damage for one side
-    GameOverModal.tsx
+    AiCommandCenter.tsx  the AI's reasoning, staged during its turn
+    AudioControls.tsx    mute plus master / music / effects volume
+    MissionReport.tsx    end-of-game statistics and fleet reveal
   App.tsx          the only stateful component: owns GameState and wires the UI
 ```
 
@@ -100,8 +123,13 @@ each shot returned. It never reads your ship positions.
    from memory. If it had damaged a second ship at the same time, those hits stay in
    memory and it keeps targeting them; otherwise it returns to the checkerboard hunt.
 
-The in-game "How the enemy thinks" panel prints the reason for the AI's most recent shot,
-so the strategy is visible while you play.
+The AI Command Center panel narrates this live: while the AI is thinking it stages
+"Scanning grid" → "Eliminating impossible targets" (or "Analyzing previous hits" and
+"Detecting ship orientation" once it is targeting) → "Selecting optimal target" →
+"Firing", then reports the verdict on the shot. The panel is built by `aiPlan()` in
+`src/engine/ai.ts` from exactly the inputs `chooseMove()` uses, so it explains the real
+decision rather than a decorative animation — and cannot leak information the AI does not
+have.
 
 ## Running locally
 
@@ -124,7 +152,7 @@ npm run test:watch # Vitest in watch mode
 
 ## Tests
 
-`npm test` runs the engine suites in `src/engine/*.test.ts` (57 tests):
+`npm test` runs 75 tests across the engine, theme and audio layers:
 
 - `board.test.ts` — board creation, horizontal/vertical placement, off-board and overlap
   rejection, immutability, hit/miss detection, duplicate-attack prevention, sinking,
@@ -142,6 +170,14 @@ npm run test:watch # Vitest in watch mode
 - `coords.test.ts` — A1-style coordinate labels.
 - `persistence.test.ts` — saving and restoring a game in progress, and ignoring corrupt,
   foreign or inaccessible storage.
+- `stats.test.ts` — end-of-game statistics computed from the real shot log (shots, hits,
+  ships destroyed, accuracy, survivors).
+- `theme/fleet.test.ts` — display names for both fleets, the competitor mode renaming only
+  the two intended enemy targets, and sink wording.
+- `audio/context.test.ts` — stored volume levels validated field by field, falling back to
+  defaults on corrupt data.
+- `ai.test.ts` also covers `aiPlan()`, including an assertion that its text never mentions
+  a coordinate the AI has not attacked.
 
 There is also an end-to-end playthrough script used for QA
 (`npm run qa:playthrough -- <url> [--easy] [--mobile]`). It drives a real browser over
@@ -193,3 +229,10 @@ bundle is then served from the domain root.
   memory of damaged ships.
 - The QA playthrough and adversarial scripts need a Chrome instance exposing a CDP
   endpoint; they are developer tools, not part of `npm test`.
+- The music and sound effects are synthesised at runtime rather than recorded, which keeps
+  the repository free of licensed media but sounds thinner than a produced score; see
+  [AUDIO_LICENSES.md](AUDIO_LICENSES.md) for the reasoning and how to swap in licensed
+  tracks.
+- The competitor easter egg renames two existing enemy ships (Carrier and Cruiser) rather
+  than adding new ones, so the fleet composition and every rule stay identical whether it
+  is on or off.

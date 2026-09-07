@@ -390,15 +390,17 @@ export default function App() {
           )}
         </section>
 
-        <aside className="space-y-3">
-          <AiCommandCenter
-            key={`${plan.turn}-${aiTurnActive}`}
-            active={aiTurnActive}
-            difficulty={game.difficulty}
-            plan={plan.steps}
-            verdict={verdict}
-            stepMs={COMMAND_STEP_MS}
-          />
+        <aside className="contents lg:block lg:space-y-3">
+          <div className="-order-1 lg:order-none">
+            <AiCommandCenter
+              key={`${plan.turn}-${aiTurnActive}`}
+              active={aiTurnActive}
+              difficulty={game.difficulty}
+              plan={plan.steps}
+              verdict={verdict}
+              stepMs={COMMAND_STEP_MS}
+            />
+          </div>
           <FleetStatus
             board={game.playerBoard}
             title="Your fleet"

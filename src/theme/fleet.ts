@@ -10,7 +10,7 @@ const PLAYER_NAMES: Record<ShipName, string> = {
   Carrier: 'Cognition Carrier',
   Battleship: 'Devin Defender',
   Cruiser: 'Code Cruiser',
-  Submarine: 'Autonomous Submarine',
+  Submarine: 'Cloud Agent',
   Destroyer: 'Bug Destroyer',
 };
 

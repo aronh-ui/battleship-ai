@@ -27,7 +27,7 @@ hunts with a checkerboard search pattern and locks onto ships once it draws bloo
   Every line is derived from the same data the AI itself uses — the visible attack grid
   and its own memory — so it never leaks a cell it has not already fired at.
 - **AI Arms Race theme** — your fleet is the Cognition Carrier, Devin Defender, Code
-  Cruiser, Autonomous Submarine and Bug Destroyer; the enemy fleet is Legacy Code,
+  Cruiser, Cloud Agent and Bug Destroyer; the enemy fleet is Legacy Code,
   Technical Debt, Bugs, Claude Code and Cursor. Hits on the two rival ships and every
   enemy sink get a full-screen callout ("Legacy code modernized.", "Bugs fixed.", …). Text labels only, no third-party logos or marks.
 - **Living battlefield** — animated water, a sonar sweep over the waters you are

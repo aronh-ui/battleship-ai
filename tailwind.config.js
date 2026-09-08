@@ -27,6 +27,12 @@ export default {
           '0%': { transform: 'translateY(-4px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
+        banner: {
+          '0%': { transform: 'scale(0.9)', opacity: '0' },
+          '12%': { transform: 'scale(1)', opacity: '1' },
+          '75%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
         scan: {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(300%)' },
@@ -65,6 +71,7 @@ export default {
         splash: 'splash 320ms ease-out',
         blast: 'blast 360ms ease-out',
         'slide-in': 'slide-in 220ms ease-out',
+        banner: 'banner 2.4s ease-out forwards',
         scan: 'scan 1.1s linear infinite',
         'ping-slow': 'ping-slow 1.2s ease-in-out infinite',
         swell: 'swell 18s ease-in-out infinite',

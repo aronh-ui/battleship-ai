@@ -8,7 +8,6 @@ interface MissionReportProps {
   winner: Player;
   aiBoard: Board;
   stats: GameStats;
-  armsRace: boolean;
   onPlayAgain: () => void;
 }
 
@@ -16,13 +15,10 @@ export function MissionReport({
   winner,
   aiBoard,
   stats,
-  armsRace,
   onPlayAgain,
 }: MissionReportProps) {
   const won = winner === 'human';
-  const competitorsCleared =
-    armsRace &&
-    ARMS_RACE_SHIPS.every((name) =>
+  const competitorsCleared = ARMS_RACE_SHIPS.every((name) =>
       aiBoard.ships.some((ship) => ship.name === name && isSunk(ship)),
     );
 
@@ -85,21 +81,16 @@ export function MissionReport({
 
         {competitorsCleared && (
           <div className="mt-3 rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-3">
-            {ARMS_RACE_CLEARED.map((line) => (
-              <p
-                key={line}
-                className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200"
-              >
-                {line}
-              </p>
-            ))}
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">
+              {ARMS_RACE_CLEARED}
+            </p>
           </div>
         )}
 
         {!won && stats.survivors.length > 0 && (
           <p className="mt-3 text-xs text-slate-400">
             Still afloat:{' '}
-            {stats.survivors.map((name) => enemyShipName(name, armsRace)).join(', ')}.
+            {stats.survivors.map((name) => enemyShipName(name)).join(', ')}.
           </p>
         )}
 

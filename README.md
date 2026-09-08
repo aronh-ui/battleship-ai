@@ -25,11 +25,12 @@ hunts with a checkerboard search pattern and locks onto ships once it draws bloo
   hit, the orientation it has confirmed, and then the verdict on the shot it just took.
   Every line is derived from the same data the AI itself uses — the visible attack grid
   and its own memory — so it never leaks a cell it has not already fired at.
-- **AI Arms Race theme** — your fleet is the Cognition Carrier, Agent Battleship, Code
+- **AI Arms Race theme** — your fleet is the Cognition Carrier, Devin Defender, Code
   Cruiser, Autonomous Submarine and Bug Destroyer; the enemy fleet is Legacy Code,
-  Technical Debt, Bugs, Claude Carrier and Cursor Cruiser, named in the hit/sink feedback.
-  A hidden mode (type `devin`, or use the subtle sidebar toggle) renames the enemy
-  flagship to Copilot Carrier; text labels only, no third-party logos or marks.
+  Technical Debt, Bugs, Claude Carrier and Cursor Cruiser. Hits and sinks on the two
+  rival ships, and hits on the Devin Defender, get a full-screen callout; sinking both
+  rivals shows "THE AI ARMS RACE CONTINUES." Text labels only, no third-party logos or
+  marks.
 - **Living battlefield** — animated water, a sonar sweep over the waters you are
   scanning, cell-sized impact and splash effects, smoke on damaged hulls and a settling
   animation on a sink. All CSS keyframes and inline SVG, no media files.
@@ -229,5 +230,3 @@ bundle is then served from the domain root.
 - The QA playthrough and adversarial scripts need a Chrome instance exposing a CDP
   endpoint; they are developer tools, not part of `npm test`.
 - A single 12 MB music track is shipped in `public/audio/`; there are no sound effects.
-- The hidden mode renames an existing enemy ship rather than adding one, so the fleet
-  composition and every rule stay identical whether it is on or off.

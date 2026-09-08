@@ -8,7 +8,7 @@ import type { ShipName } from '../engine/types';
 
 const PLAYER_NAMES: Record<ShipName, string> = {
   Carrier: 'Cognition Carrier',
-  Battleship: 'Agent Battleship',
+  Battleship: 'Devin Defender',
   Cruiser: 'Code Cruiser',
   Submarine: 'Autonomous Submarine',
   Destroyer: 'Bug Destroyer',
@@ -23,39 +23,31 @@ const ENEMY_NAMES: Record<ShipName, string> = {
   Destroyer: 'Cursor Cruiser',
 };
 
-/** Hidden mode: the enemy flagship is renamed after another AI coding tool. */
-const ARMS_RACE_NAMES: Partial<Record<ShipName, string>> = {
-  Carrier: 'Copilot Carrier',
-};
+/** Enemy ships whose hits and sinks get a full-screen banner. */
+export const ARMS_RACE_SHIPS: readonly ShipName[] = ['Submarine', 'Destroyer'];
 
-/** Sinking all of these in hidden mode triggers the arms-race completion copy. */
-export const ARMS_RACE_SHIPS: readonly ShipName[] = ['Carrier', 'Destroyer'];
+/** The player's flagship: a hit on it gets its own banner. */
+export const DEFENDER: ShipName = 'Battleship';
 
 export function playerShipName(name: ShipName): string {
   return PLAYER_NAMES[name];
 }
 
-export function enemyShipName(name: ShipName, armsRace = false): string {
-  return (armsRace ? ARMS_RACE_NAMES[name] : undefined) ?? ENEMY_NAMES[name];
+export function enemyShipName(name: ShipName): string {
+  return ENEMY_NAMES[name];
 }
 
-export function shipDisplayName(
-  name: ShipName,
-  side: 'player' | 'enemy',
-  armsRace = false,
-): string {
-  return side === 'player' ? playerShipName(name) : enemyShipName(name, armsRace);
+export function shipDisplayName(name: ShipName, side: 'player' | 'enemy'): string {
+  return side === 'player' ? playerShipName(name) : enemyShipName(name);
 }
 
 /** Competitor targets say "ELIMINATED"/"SUNK"; the rest are "DESTROYED". */
-export function sunkVerb(name: ShipName, side: 'player' | 'enemy', armsRace: boolean) {
+export function sunkVerb(name: ShipName, side: 'player' | 'enemy') {
   if (side === 'player') return 'DESTROYED';
-  if (armsRace && name === 'Carrier') return 'ELIMINATED';
+  if (name === 'Submarine') return 'ELIMINATED';
   if (name === 'Destroyer') return 'SUNK';
   return 'DESTROYED';
 }
 
-export const ARMS_RACE_CLEARED = [
-  'THE AI ARMS RACE CONTINUES.',
-  'DEVIN REMAINS OPERATIONAL.',
-] as const;
+export const ARMS_RACE_CLEARED = 'THE AI ARMS RACE CONTINUES.';
+export const DEFENDER_HIT = 'DEVIN REMAINS OPERATIONAL.';

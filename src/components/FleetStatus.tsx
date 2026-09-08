@@ -10,7 +10,6 @@ interface FleetStatusProps {
   board: Board;
   title: string;
   side: 'player' | 'enemy';
-  armsRace?: boolean;
   /** Per-cell damage is only public knowledge for your own fleet. */
   revealDamage?: boolean;
 }
@@ -19,7 +18,6 @@ export function FleetStatus({
   board,
   title,
   side,
-  armsRace = false,
   revealDamage = false,
 }: FleetStatusProps) {
   const afloat = board.ships.filter((s) => !isSunk(s)).length;
@@ -43,7 +41,7 @@ export function FleetStatus({
                 sunk ? 'text-rose-300 line-through' : 'text-slate-200'
               }`}
             >
-              <span>{shipDisplayName(ship.name, side, armsRace)}</span>
+              <span>{shipDisplayName(ship.name, side)}</span>
               <ShipSprite
                 name={ship.name}
                 length={ship.length}

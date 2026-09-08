@@ -3,6 +3,8 @@ import { FLEET } from '../engine/types';
 import {
   ARMS_RACE_CLEARED,
   ARMS_RACE_SHIPS,
+  DEFENDER,
+  DEFENDER_HIT,
   enemyShipName,
   playerShipName,
   shipDisplayName,
@@ -29,30 +31,22 @@ describe('fleet theme', () => {
     expect(enemyShipName('Destroyer')).toBe('Cursor Cruiser');
   });
 
-  it('renames only the flagship in arms race mode', () => {
-    expect(enemyShipName('Carrier', true)).toBe('Copilot Carrier');
-    expect(enemyShipName('Destroyer', true)).toBe('Cursor Cruiser');
-    expect(enemyShipName('Battleship', true)).toBe('Technical Debt');
-    expect(ARMS_RACE_SHIPS).toEqual(['Carrier', 'Destroyer']);
+  it('names the flagship Devin Defender and flags the rivalry ships', () => {
+    expect(playerShipName('Battleship')).toBe('Devin Defender');
+    expect(DEFENDER).toBe('Battleship');
+    expect(ARMS_RACE_SHIPS).toEqual(['Submarine', 'Destroyer']);
+    expect(shipDisplayName('Battleship', 'player')).toBe('Devin Defender');
   });
 
-  it('never renames the player fleet in arms race mode', () => {
-    for (const spec of FLEET) {
-      expect(shipDisplayName(spec.name, 'player', true)).toBe(playerShipName(spec.name));
-    }
+  it('uses rivalry-specific sink wording', () => {
+    expect(sunkVerb('Submarine', 'enemy')).toBe('ELIMINATED');
+    expect(sunkVerb('Destroyer', 'enemy')).toBe('SUNK');
+    expect(sunkVerb('Carrier', 'enemy')).toBe('DESTROYED');
+    expect(sunkVerb('Battleship', 'player')).toBe('DESTROYED');
   });
 
-  it('uses competitor-specific sink wording only in arms race mode', () => {
-    expect(sunkVerb('Carrier', 'enemy', true)).toBe('ELIMINATED');
-    expect(sunkVerb('Destroyer', 'enemy', false)).toBe('SUNK');
-    expect(sunkVerb('Carrier', 'enemy', false)).toBe('DESTROYED');
-    expect(sunkVerb('Carrier', 'player', true)).toBe('DESTROYED');
-  });
-
-  it('has the arms race completion lines', () => {
-    expect(ARMS_RACE_CLEARED).toEqual([
-      'THE AI ARMS RACE CONTINUES.',
-      'DEVIN REMAINS OPERATIONAL.',
-    ]);
+  it('has the rivalry callouts', () => {
+    expect(ARMS_RACE_CLEARED).toBe('THE AI ARMS RACE CONTINUES.');
+    expect(DEFENDER_HIT).toBe('DEVIN REMAINS OPERATIONAL.');
   });
 });

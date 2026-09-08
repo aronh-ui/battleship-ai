@@ -25,25 +25,23 @@ import {
 } from './engine/game';
 import { loadGame, saveGame } from './engine/persistence';
 import { gameStats } from './engine/stats';
-import { enemyShipName, playerShipName, sunkVerb } from './theme/fleet';
+import {
+  ARMS_RACE_CLEARED,
+  ARMS_RACE_SHIPS,
+  DEFENDER,
+  DEFENDER_HIT,
+  enemyShipName,
+  playerShipName,
+  sunkVerb,
+} from './theme/fleet';
 import type { Coord, Difficulty, Orientation, Player } from './engine/types';
 
 /** Minimum pause before the AI fires, even for a very short reasoning chain. */
 const AI_MIN_THINKING_MS = 700;
 /** Time each reasoning step stays on screen in the command centre. */
 const COMMAND_STEP_MS = 260;
-const ARMS_RACE_KEY = 'battleship-ai:armsrace';
-const ARMS_RACE_CODE = 'devin';
 
 const store = typeof window === 'undefined' ? undefined : window.sessionStorage;
-
-function readArmsRace(): boolean {
-  try {
-    return window.localStorage.getItem(ARMS_RACE_KEY) === 'on';
-  } catch {
-    return false;
-  }
-}
 
 export default function App() {
   const audio = useAudio();
@@ -54,7 +52,6 @@ export default function App() {
   const [hover, setHover] = useState<Coord | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
-  const [armsRace, setArmsRace] = useState<boolean>(readArmsRace);
   const [plan, setPlan] = useState<PlanSnapshot>({ turn: -1, steps: [] });
   const noticeTimer = useRef<number | undefined>(undefined);
   const soundedLog = useRef<number>(game.log.length);
@@ -73,14 +70,6 @@ export default function App() {
 
   // Surviving an accidental refresh matters more than a pristine URL bar.
   useEffect(() => saveGame(store, game), [game]);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(ARMS_RACE_KEY, armsRace ? 'on' : 'off');
-    } catch {
-      // Storage is a convenience here, never a requirement.
-    }
-  }, [armsRace]);
 
   // The command centre shows the reasoning the AI is about to apply, so the plan
   // is captured from the board *before* the shot lands, then frozen for the rest
@@ -147,17 +136,11 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [game.phase, game.winner, audio]);
 
-  // Rotate with R; typing the hidden code unlocks the AI Arms Race targets.
+  // Rotate with R.
   useEffect(() => {
-    let typed = '';
     const onKey = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() === 'r' && game.phase === 'setup') {
         setOrientation((o) => (o === 'horizontal' ? 'vertical' : 'horizontal'));
-      }
-      typed = (typed + event.key.toLowerCase()).slice(-ARMS_RACE_CODE.length);
-      if (typed === ARMS_RACE_CODE) {
-        typed = '';
-        setArmsRace((on) => !on);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -225,14 +208,14 @@ export default function App() {
     if (!entry) return 'Take the first shot.';
     const at = coordLabel(entry.coord);
     if (entry.outcome === 'sunk' && entry.shipName) {
-      const name = enemyShipName(entry.shipName, armsRace).toUpperCase();
-      return `${name} — ${sunkVerb(entry.shipName, 'enemy', armsRace)}`;
+      const name = enemyShipName(entry.shipName).toUpperCase();
+      return `${name} — ${sunkVerb(entry.shipName, 'enemy')}`;
     }
     // Naming a merely damaged enemy target would leak its length, so hits stay generic.
     return entry.outcome === 'hit'
       ? `DIRECT HIT AT ${at} — TARGET DAMAGED`
       : `${at} — NO CONTACT`;
-  }, [lastHuman, armsRace]);
+  }, [lastHuman]);
 
   const enemyShotLine = ((): string | null => {
     if (!lastAiEntry) return null;
@@ -256,6 +239,33 @@ export default function App() {
       target: ship ? playerShipName(ship.name) : undefined,
       reason: lastAiEntry.reason,
     };
+  })();
+
+  // Full-screen callouts for the named rivalry ships; the log index keys the
+  // animation so each new event replays it.
+  const banner = ((): { id: number; lines: string[] } | null => {
+    const index = game.log.length - 1;
+    const entry = game.log[index];
+    if (!entry || game.phase !== 'playing') return null;
+    if (entry.player === 'ai') {
+      const ship = playerShipAt(entry.coord);
+      return entry.outcome === 'hit' && ship?.name === DEFENDER
+        ? { id: index, lines: [DEFENDER_HIT] }
+        : null;
+    }
+    if (entry.outcome === 'miss' || entry.outcome === 'invalid') return null;
+    const ship = game.aiBoard.ships.find((candidate) =>
+      candidate.cells.some((c) => c.row === entry.coord.row && c.col === entry.coord.col),
+    );
+    if (!ship || !ARMS_RACE_SHIPS.includes(ship.name)) return null;
+    const name = enemyShipName(ship.name).toUpperCase();
+    if (entry.outcome === 'hit') return { id: index, lines: [`${name} — HIT`] };
+    const lines = [`${name} — ${sunkVerb(ship.name, 'enemy')}`];
+    const allDown = ARMS_RACE_SHIPS.every((rival) =>
+      game.aiBoard.ships.some((candidate) => candidate.name === rival && isSunk(candidate)),
+    );
+    if (allDown) lines.push(ARMS_RACE_CLEARED);
+    return { id: index, lines };
   })();
 
 
@@ -414,24 +424,33 @@ export default function App() {
             board={game.aiBoard}
             title="Enemy targets"
             side="enemy"
-            armsRace={armsRace}
-          />
-          <ArmsRaceToggle
-            on={armsRace}
-            onToggle={() => {
-              audio.play('click');
-              setArmsRace((v) => !v);
-            }}
           />
         </aside>
       </main>
+
+      {banner && (
+        <div
+          key={banner.id}
+          role="status"
+          data-testid="banner"
+          className="pointer-events-none fixed inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-sea-900/60 px-4 text-center animate-banner"
+        >
+          {banner.lines.map((line) => (
+            <p
+              key={line}
+              className="text-2xl font-black uppercase tracking-[0.15em] text-cyan-200 drop-shadow-[0_0_24px_rgba(34,211,238,0.6)] sm:text-4xl lg:text-5xl"
+            >
+              {line}
+            </p>
+          ))}
+        </div>
+      )}
 
       {game.phase === 'gameover' && game.winner && (
         <MissionReport
           winner={game.winner}
           aiBoard={game.aiBoard}
           stats={stats}
-          armsRace={armsRace}
           onPlayAgain={() => {
             audio.play('click');
             setGame((g) => resetGame(g));
@@ -472,26 +491,6 @@ function impactOf(shot: Shot | null): BoardImpact | null {
     outcome: entry.outcome === 'invalid' ? 'miss' : entry.outcome,
     id: index,
   };
-}
-
-function ArmsRaceToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-pressed={on}
-      data-testid="arms-race-toggle"
-      className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-[0.65rem] uppercase tracking-[0.2em] transition ${
-        on
-          ? 'border-cyan-400/60 bg-cyan-500/10 text-cyan-200'
-          : 'border-sea-700 bg-transparent text-slate-500 hover:text-slate-300'
-      }`}
-      title="Rename two enemy targets"
-    >
-      <span>AI arms race</span>
-      <span aria-hidden>{on ? '◈' : '◇'}</span>
-    </button>
-  );
 }
 
 interface SetupBarProps {

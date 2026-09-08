@@ -18,7 +18,8 @@ hunts with a checkerboard search pattern and locks onto ships once it draws bloo
 - **Play phase** — alternating turns, a turn indicator, per-shot feedback, hit/miss/sunk
   markers, and "ships afloat" counts for both sides. Attacked cells cannot be attacked
   again.
-- **AI opponent** — `Smart` (hunt-and-target, default) or `Easy` (random) difficulty.
+- **AI opponent** — `Easy` (random), `Smart` (hunt-and-target, default) or `Scott Wu`
+  (probability-density targeting, very hard).
 - **AI Command Center** — during the AI's turn a panel reveals its reasoning as it
   happens (Observe → Reason → Act → Verify): how many cells are still unresolved, how the
   checkerboard eliminates the rest, the switch into targeting once it has an unresolved
@@ -27,8 +28,8 @@ hunts with a checkerboard search pattern and locks onto ships once it draws bloo
   and its own memory — so it never leaks a cell it has not already fired at.
 - **AI Arms Race theme** — your fleet is the Cognition Carrier, Devin Defender, Code
   Cruiser, Autonomous Submarine and Bug Destroyer; the enemy fleet is Legacy Code,
-  Technical Debt, Bugs, Claude Carrier and Cursor Cruiser. Hits and sinks on the two
-  rival ships get a full-screen callout. Text labels only, no third-party logos or marks.
+  Technical Debt, Bugs, Claude Code and Cursor. Hits on the two rival ships and every
+  enemy sink get a full-screen callout ("Legacy code modernized.", "Bugs fixed.", …). Text labels only, no third-party logos or marks.
 - **Living battlefield** — animated water, a sonar sweep over the waters you are
   scanning, cell-sized impact and splash effects, smoke on damaged hulls and a settling
   animation on a sink. All CSS keyframes and inline SVG, no media files.
@@ -105,6 +106,12 @@ The AI only ever looks at its own attack history — the cells it has fired at a
 each shot returned. It never reads your ship positions.
 
 **Easy** — fires at a uniformly random cell it has not tried yet.
+
+**Scott Wu** — probability density. For every ship still afloat it enumerates every
+placement consistent with the evidence (no misses, no sunk cells; when a ship is damaged,
+placements must cover the known hits) and fires at the untried cell covered by the most
+placements. It uses only public information: the attack grid, announced sinks and its own
+hit memory.
 
 **Smart** — a two-mode hunt-and-target strategy:
 

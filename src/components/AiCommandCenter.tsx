@@ -155,9 +155,11 @@ export function AiCommandCenter({
       )}
 
       <p className="mt-2 border-t border-sea-700 pt-2 text-[0.65rem] leading-snug text-slate-400">
-        {difficulty === 'smart'
-          ? 'Smart mode: searches on a checkerboard, then locks onto a hull once it lands a hit.'
-          : 'Easy mode: fires at a random untried cell and forgets what it learned.'}
+        {difficulty === 'scott'
+          ? 'Scott Wu mode: counts every placement the remaining ships could still occupy and fires where they overlap most.'
+          : difficulty === 'smart'
+            ? 'Smart mode: searches on a checkerboard, then locks onto a hull once it lands a hit.'
+            : 'Easy mode: fires at a random untried cell and forgets what it learned.'}
       </p>
         </>
       )}

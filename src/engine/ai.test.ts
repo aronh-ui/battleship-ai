@@ -92,6 +92,49 @@ describe('hunt mode', () => {
     }
   });
 
+  it('Scott Wu mode sinks every fleet legally and needs fewer shots than Smart', () => {
+    const play = (difficulty: 'smart' | 'scott', seed: number) => {
+      let board = randomBoard(seededRng(seed));
+      let state = createAiState(difficulty);
+      const seeded = seededRng(seed * 31);
+      let shots = 0;
+      while (!board.ships.every((s) => s.hits.length === s.length)) {
+        const move = chooseMove(board, state, seeded)!;
+        expect(move).not.toBeNull();
+        const outcome = attack(board, move.coord);
+        expect(outcome.result.outcome).not.toBe('invalid');
+        board = outcome.board;
+        state = updateAiState(state, outcome.result);
+        shots++;
+      }
+      expect(state.pendingHits).toEqual([]);
+      return shots;
+    };
+    let smart = 0;
+    let scott = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      smart += play('smart', seed);
+      scott += play('scott', seed);
+    }
+    expect(scott).toBeLessThan(smart);
+    expect(scott / 60).toBeLessThan(55);
+  });
+
+  it('Scott Wu mode never fires where no remaining ship could fit', () => {
+    // Destroyer alone on a board; a lone unknown cell boxed in by misses is impossible.
+    const board = fireAt(boardWith([4, { row: 0, col: 0 }, 'horizontal']), [
+      { row: 5, col: 4 },
+      { row: 5, col: 6 },
+      { row: 4, col: 5 },
+      { row: 6, col: 5 },
+    ]);
+    const isolated = { row: 5, col: 5 };
+    for (let i = 0; i < 20; i++) {
+      const move = chooseMove(board, createAiState('scott'), seededRng(i))!;
+      expect(move.coord).not.toEqual(isolated);
+    }
+  });
+
   it('returns null when the board is fully attacked', () => {
     let board = createBoard();
     for (let row = 0; row < BOARD_SIZE; row++) {

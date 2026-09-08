@@ -80,6 +80,67 @@ function lineExtensions(board: Board, hits: Coord[]): Coord[] {
   return candidates.filter((c) => untried(board, c));
 }
 
+/**
+ * Probability-density targeting for the hardest difficulty. For every ship still
+ * afloat, every placement consistent with what the AI has seen (no misses, no cells of
+ * sunk ships; in target mode it must cover a known hit) adds weight to the cells it
+ * would occupy. The densest untried cell is the shot. Uses only public information:
+ * the attack grid, announced sinks and the AI's own hit memory.
+ */
+export function densityMap(board: Board, pendingHits: Coord[]): number[][] {
+  const pending = new Set(pendingHits.map(key));
+  const sunkCells = new Set(
+    board.ships
+      .filter((s) => s.hits.length === s.length)
+      .flatMap((s) => s.cells.map(key)),
+  );
+  const open = (c: Coord) =>
+    inBounds(c) &&
+    !sunkCells.has(key(c)) &&
+    (board.grid[c.row][c.col] === 'unknown' || pending.has(key(c)));
+  const lengths = board.ships
+    .filter((s) => s.hits.length < s.length)
+    .map((s) => s.length);
+  const map = Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0) as number[]);
+
+  for (const length of lengths) {
+    for (let row = 0; row < BOARD_SIZE; row++) {
+      for (let col = 0; col < BOARD_SIZE; col++) {
+        for (const horizontal of [true, false]) {
+          const cells: Coord[] = [];
+          for (let i = 0; i < length; i++) {
+            cells.push(horizontal ? { row, col: col + i } : { row: row + i, col });
+          }
+          if (!cells.every(open)) continue;
+          const covered = cells.filter((c) => pending.has(key(c))).length;
+          if (pending.size > 0 && covered === 0) continue;
+          const weight = 1 + covered * BOARD_SIZE;
+          for (const c of cells) {
+            if (!pending.has(key(c))) map[c.row][c.col] += weight;
+          }
+        }
+      }
+    }
+  }
+  return map;
+}
+
+function densestCell(board: Board, state: AiState, rng: Rng): Coord | null {
+  const map = densityMap(board, state.pendingHits);
+  let best: Coord[] = [];
+  let bestScore = 0;
+  for (const c of allUntried(board)) {
+    const score = map[c.row][c.col];
+    if (score > bestScore) {
+      bestScore = score;
+      best = [c];
+    } else if (score === bestScore && score > 0) {
+      best.push(c);
+    }
+  }
+  return best.length > 0 ? best[randomInt(rng, best.length)] : null;
+}
+
 /** Cells whose coordinates share the checkerboard parity used for hunting. */
 export function parityCells(cells: Coord[]): Coord[] {
   return cells.filter((c) => (c.row + c.col) % 2 === 0);
@@ -97,7 +158,21 @@ export function chooseMove(
   const options = allUntried(board);
   if (options.length === 0) return null;
 
-  if (state.difficulty === 'smart' && state.pendingHits.length > 0) {
+  if (state.difficulty === 'scott') {
+    const coord = densestCell(board, state, rng);
+    if (coord) {
+      const targeting = state.pendingHits.length > 0;
+      return {
+        coord,
+        mode: targeting ? 'target' : 'hunt',
+        reason: targeting
+          ? 'Weighs every placement of the damaged ship that fits the evidence and fires where the most of them overlap.'
+          : 'Counts every way the remaining ships could still fit around the misses and fires at the cell covered by the most of them.',
+      };
+    }
+  }
+
+  if (state.difficulty !== 'easy' && state.pendingHits.length > 0) {
     const connected = connectedGroup(state.pendingHits);
 
     if (connected.length >= 2) {
@@ -205,7 +280,7 @@ export interface AiThought {
  */
 export function aiPlan(board: Board, state: AiState): AiThought[] {
   const untried = allUntried(board);
-  const targeting = state.difficulty === 'smart' && state.pendingHits.length > 0;
+  const targeting = state.difficulty !== 'easy' && state.pendingHits.length > 0;
   const steps: AiThought[] = [
     {
       stage: 'observe',
@@ -214,7 +289,20 @@ export function aiPlan(board: Board, state: AiState): AiThought[] {
     },
   ];
 
-  if (targeting) {
+  if (state.difficulty === 'scott') {
+    steps.push({
+      stage: 'observe',
+      label: targeting ? 'Analyzing previous hits' : 'Mapping remaining fleet',
+      detail: targeting
+        ? `${state.pendingHits.length} damaged cell${state.pendingHits.length === 1 ? '' : 's'} constrain the hull`
+        : `${board.ships.filter((s) => s.hits.length < s.length).length} hulls still afloat`,
+    });
+    steps.push({
+      stage: 'reason',
+      label: 'Computing probability density',
+      detail: 'Counting every placement consistent with the evidence',
+    });
+  } else if (targeting) {
     const connected = connectedGroup(state.pendingHits);
     const line = connected.length >= 2 ? lineExtensions(board, connected) : [];
     steps.push({
@@ -263,7 +351,7 @@ export function aiPlan(board: Board, state: AiState): AiThought[] {
 }
 
 export function aiMode(state: AiState): AiMode {
-  return state.difficulty === 'smart' && state.pendingHits.length > 0
+  return state.difficulty !== 'easy' && state.pendingHits.length > 0
     ? 'target'
     : 'hunt';
 }

@@ -27,6 +27,7 @@ import { loadGame, saveGame } from './engine/persistence';
 import { gameStats } from './engine/stats';
 import {
   ARMS_RACE_SHIPS,
+  enemySunkBanner,
   enemyShipName,
   playerShipName,
   sunkVerb,
@@ -248,10 +249,10 @@ export default function App() {
     const ship = game.aiBoard.ships.find((candidate) =>
       candidate.cells.some((c) => c.row === entry.coord.row && c.col === entry.coord.col),
     );
-    if (!ship || !ARMS_RACE_SHIPS.includes(ship.name)) return null;
-    const name = enemyShipName(ship.name).toUpperCase();
-    if (entry.outcome === 'hit') return { id: index, lines: [`${name} — HIT`] };
-    return { id: index, lines: [`${name} — ${sunkVerb(ship.name, 'enemy')}`] };
+    if (!ship) return null;
+    if (entry.outcome === 'sunk') return { id: index, lines: [enemySunkBanner(ship.name)] };
+    if (!ARMS_RACE_SHIPS.includes(ship.name)) return null;
+    return { id: index, lines: [`${enemyShipName(ship.name).toUpperCase()} — HIT`] };
   })();
 
 
@@ -280,7 +281,7 @@ export default function App() {
             Difficulty
           </span>
           <div className="flex overflow-hidden rounded-lg border border-sea-600">
-            {(['easy', 'smart'] as const).map((level) => (
+            {(['easy', 'smart', 'scott'] as const).map((level) => (
               <button
                 key={level}
                 type="button"
@@ -292,7 +293,7 @@ export default function App() {
                     : 'bg-sea-800 text-slate-300 hover:bg-sea-700'
                 }`}
               >
-                {level}
+                {level === 'scott' ? 'Scott Wu' : level}
               </button>
             ))}
           </div>

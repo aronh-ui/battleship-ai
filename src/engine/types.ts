@@ -51,7 +51,7 @@ export interface AttackResult {
   ship?: Ship;
 }
 
-export type Difficulty = 'easy' | 'smart';
+export type Difficulty = 'easy' | 'smart' | 'scott';
 
 export type Phase = 'setup' | 'playing' | 'gameover';
 

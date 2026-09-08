@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FLEET } from '../engine/types';
 import {
+  enemySunkBanner,
   ARMS_RACE_SHIPS,
   enemyShipName,
   playerShipName,
@@ -24,8 +25,8 @@ describe('fleet theme', () => {
 
   it('uses the themed enemy names by default', () => {
     expect(enemyShipName('Battleship')).toBe('Technical Debt');
-    expect(enemyShipName('Submarine')).toBe('Claude Carrier');
-    expect(enemyShipName('Destroyer')).toBe('Cursor Cruiser');
+    expect(enemyShipName('Submarine')).toBe('Claude Code');
+    expect(enemyShipName('Destroyer')).toBe('Cursor');
   });
 
   it('names the flagship Devin Defender and flags the rivalry ships', () => {
@@ -41,4 +42,14 @@ describe('fleet theme', () => {
     expect(sunkVerb('Battleship', 'player')).toBe('DESTROYED');
   });
 
+});
+
+describe('enemySunkBanner', () => {
+  it('uses the outcome phrasing for the classic targets and the rivalry verbs otherwise', () => {
+    expect(enemySunkBanner('Carrier')).toBe('Legacy code modernized.');
+    expect(enemySunkBanner('Battleship')).toBe('Technical debt eliminated.');
+    expect(enemySunkBanner('Cruiser')).toBe('Bugs fixed.');
+    expect(enemySunkBanner('Submarine')).toBe('CLAUDE CODE — ELIMINATED');
+    expect(enemySunkBanner('Destroyer')).toBe('CURSOR — SUNK');
+  });
 });

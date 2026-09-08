@@ -19,12 +19,26 @@ const ENEMY_NAMES: Record<ShipName, string> = {
   Carrier: 'Legacy Code',
   Battleship: 'Technical Debt',
   Cruiser: 'Bugs',
-  Submarine: 'Claude Carrier',
-  Destroyer: 'Cursor Cruiser',
+  Submarine: 'Claude Code',
+  Destroyer: 'Cursor',
 };
 
-/** Enemy ships whose hits and sinks get a full-screen banner. */
+/** Enemy ships whose hits (as well as sinks) get a full-screen banner. */
 export const ARMS_RACE_SHIPS: readonly ShipName[] = ['Submarine', 'Destroyer'];
+
+/** Full-screen line shown when an enemy ship sinks. */
+export function enemySunkBanner(name: ShipName): string {
+  switch (name) {
+    case 'Carrier':
+      return 'Legacy code modernized.';
+    case 'Battleship':
+      return 'Technical debt eliminated.';
+    case 'Cruiser':
+      return 'Bugs fixed.';
+    default:
+      return `${enemyShipName(name).toUpperCase()} — ${sunkVerb(name, 'enemy')}`;
+  }
+}
 
 export function playerShipName(name: ShipName): string {
   return PLAYER_NAMES[name];

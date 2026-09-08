@@ -26,10 +26,7 @@ import {
 import { loadGame, saveGame } from './engine/persistence';
 import { gameStats } from './engine/stats';
 import {
-  ARMS_RACE_CLEARED,
   ARMS_RACE_SHIPS,
-  DEFENDER,
-  DEFENDER_HIT,
   enemyShipName,
   playerShipName,
   sunkVerb,
@@ -246,13 +243,7 @@ export default function App() {
   const banner = ((): { id: number; lines: string[] } | null => {
     const index = game.log.length - 1;
     const entry = game.log[index];
-    if (!entry || game.phase !== 'playing') return null;
-    if (entry.player === 'ai') {
-      const ship = playerShipAt(entry.coord);
-      return entry.outcome === 'hit' && ship?.name === DEFENDER
-        ? { id: index, lines: [DEFENDER_HIT] }
-        : null;
-    }
+    if (!entry || game.phase !== 'playing' || entry.player === 'ai') return null;
     if (entry.outcome === 'miss' || entry.outcome === 'invalid') return null;
     const ship = game.aiBoard.ships.find((candidate) =>
       candidate.cells.some((c) => c.row === entry.coord.row && c.col === entry.coord.col),
@@ -260,12 +251,7 @@ export default function App() {
     if (!ship || !ARMS_RACE_SHIPS.includes(ship.name)) return null;
     const name = enemyShipName(ship.name).toUpperCase();
     if (entry.outcome === 'hit') return { id: index, lines: [`${name} — HIT`] };
-    const lines = [`${name} — ${sunkVerb(ship.name, 'enemy')}`];
-    const allDown = ARMS_RACE_SHIPS.every((rival) =>
-      game.aiBoard.ships.some((candidate) => candidate.name === rival && isSunk(candidate)),
-    );
-    if (allDown) lines.push(ARMS_RACE_CLEARED);
-    return { id: index, lines };
+    return { id: index, lines: [`${name} — ${sunkVerb(ship.name, 'enemy')}`] };
   })();
 
 

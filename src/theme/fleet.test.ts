@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FLEET } from '../engine/types';
 import {
-  ARMS_RACE_CLEARED,
   ARMS_RACE_SHIPS,
-  DEFENDER,
-  DEFENDER_HIT,
   enemyShipName,
   playerShipName,
   shipDisplayName,
@@ -33,7 +30,6 @@ describe('fleet theme', () => {
 
   it('names the flagship Devin Defender and flags the rivalry ships', () => {
     expect(playerShipName('Battleship')).toBe('Devin Defender');
-    expect(DEFENDER).toBe('Battleship');
     expect(ARMS_RACE_SHIPS).toEqual(['Submarine', 'Destroyer']);
     expect(shipDisplayName('Battleship', 'player')).toBe('Devin Defender');
   });
@@ -45,8 +41,4 @@ describe('fleet theme', () => {
     expect(sunkVerb('Battleship', 'player')).toBe('DESTROYED');
   });
 
-  it('has the rivalry callouts', () => {
-    expect(ARMS_RACE_CLEARED).toBe('THE AI ARMS RACE CONTINUES.');
-    expect(DEFENDER_HIT).toBe('DEVIN REMAINS OPERATIONAL.');
-  });
 });

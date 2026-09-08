@@ -26,9 +26,6 @@ const ENEMY_NAMES: Record<ShipName, string> = {
 /** Enemy ships whose hits and sinks get a full-screen banner. */
 export const ARMS_RACE_SHIPS: readonly ShipName[] = ['Submarine', 'Destroyer'];
 
-/** The player's flagship: a hit on it gets its own banner. */
-export const DEFENDER: ShipName = 'Battleship';
-
 export function playerShipName(name: ShipName): string {
   return PLAYER_NAMES[name];
 }
@@ -48,6 +45,3 @@ export function sunkVerb(name: ShipName, side: 'player' | 'enemy') {
   if (name === 'Destroyer') return 'SUNK';
   return 'DESTROYED';
 }
-
-export const ARMS_RACE_CLEARED = 'THE AI ARMS RACE CONTINUES.';
-export const DEFENDER_HIT = 'DEVIN REMAINS OPERATIONAL.';

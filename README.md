@@ -28,9 +28,7 @@ hunts with a checkerboard search pattern and locks onto ships once it draws bloo
 - **AI Arms Race theme** — your fleet is the Cognition Carrier, Devin Defender, Code
   Cruiser, Autonomous Submarine and Bug Destroyer; the enemy fleet is Legacy Code,
   Technical Debt, Bugs, Claude Carrier and Cursor Cruiser. Hits and sinks on the two
-  rival ships, and hits on the Devin Defender, get a full-screen callout; sinking both
-  rivals shows "THE AI ARMS RACE CONTINUES." Text labels only, no third-party logos or
-  marks.
+  rival ships get a full-screen callout. Text labels only, no third-party logos or marks.
 - **Living battlefield** — animated water, a sonar sweep over the waters you are
   scanning, cell-sized impact and splash effects, smoke on damaged hulls and a settling
   animation on a sink. All CSS keyframes and inline SVG, no media files.

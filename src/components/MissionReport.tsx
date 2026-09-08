@@ -1,6 +1,5 @@
-import { isSunk } from '../engine/board';
 import type { GameStats } from '../engine/stats';
-import { ARMS_RACE_CLEARED, ARMS_RACE_SHIPS, enemyShipName } from '../theme/fleet';
+import { enemyShipName } from '../theme/fleet';
 import { GameBoard } from './GameBoard';
 import type { Board, Player } from '../engine/types';
 
@@ -18,10 +17,6 @@ export function MissionReport({
   onPlayAgain,
 }: MissionReportProps) {
   const won = winner === 'human';
-  const competitorsCleared = ARMS_RACE_SHIPS.every((name) =>
-      aiBoard.ships.some((ship) => ship.name === name && isSunk(ship)),
-    );
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-sea-900/85 p-4 backdrop-blur-sm"
@@ -78,14 +73,6 @@ export function MissionReport({
             ? `${stats.player.destroyed} targets destroyed · the ocean is clear.`
             : `${stats.player.destroyed} of 5 targets destroyed · ${stats.survivors.length} still afloat.`}
         </p>
-
-        {competitorsCleared && (
-          <div className="mt-3 rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">
-              {ARMS_RACE_CLEARED}
-            </p>
-          </div>
-        )}
 
         {!won && stats.survivors.length > 0 && (
           <p className="mt-3 text-xs text-slate-400">

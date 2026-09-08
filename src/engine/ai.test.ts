@@ -70,6 +70,28 @@ describe('hunt mode', () => {
     expect(board.ships.every((s) => s.hits.length === s.length)).toBe(true);
   });
 
+  it('sinks every fleet in bounded shots across many random games, never firing invalidly', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      let board = randomBoard(seededRng(seed));
+      let state = createAiState('smart');
+      const seeded = seededRng(seed * 7919);
+      let shots = 0;
+      while (!board.ships.every((s) => s.hits.length === s.length)) {
+        const move = chooseMove(board, state, seeded);
+        expect(move).not.toBeNull();
+        const outcome = attack(board, move!.coord);
+        expect(outcome.result.outcome).not.toBe('invalid');
+        board = outcome.board;
+        state = updateAiState(state, outcome.result);
+        shots++;
+        expect(shots).toBeLessThanOrEqual(BOARD_SIZE * BOARD_SIZE);
+      }
+      expect(state.pendingHits).toEqual([]);
+      // Parity hunting plus targeting must beat a full-board sweep by a clear margin.
+      expect(shots).toBeLessThan(90);
+    }
+  });
+
   it('returns null when the board is fully attacked', () => {
     let board = createBoard();
     for (let row = 0; row < BOARD_SIZE; row++) {

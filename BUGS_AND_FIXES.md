@@ -317,3 +317,66 @@ persists through the AI's reply.
   correctly persists, game state does not); mid-game refresh still restores the game.
 - **Performance.** Effects are CSS keyframes and inline SVG; no measurable jank and no
   media files in the bundle.
+
+---
+
+# Round 4 — pre-demo adversarial QA (current build)
+
+Scope: the deployed build with the licensed music track, renamed fleets (Devin Defender,
+Claude Carrier, Cursor Cruiser), full-screen hit/sink callouts and the collapsed AI
+Command Center. Everything below was run against the live URL
+`https://aronh-ui.github.io/battleship-ai/`, not localhost. Earlier rounds are kept above
+in full (BUG-1…9).
+
+## Testing performed
+
+| Area                              | How                                                                                         | Result |
+| --------------------------------- | ------------------------------------------------------------------------------------------- | ------ |
+| Unit tests                        | `npm test` — 74 tests incl. one new AI stress test (200 seeded games)                        | Pass   |
+| Lint / type check / bundle        | `npm run lint`, `npm run build`                                                              | Pass   |
+| Placement edge cases              | Adversarial script: one cell past right/bottom edge refused, exact edge accepted, overlap refused, rotate, double-click places once, Start disabled until 5 ships, 5× randomize = 17 cells | Pass, desktop + 390×844 |
+| Rapid / repeated clicking         | 5 rapid clicks on 5 enemy cells → exactly one shot, one log entry                           | Pass   |
+| Duplicate attacks                 | Re-clicking an attacked cell is disabled and produces no log entry                          | Pass   |
+| Turn-order integrity              | Clicking every enemy cell while the AI thinks fires nothing; each player shot yields exactly one AI reply | Pass |
+| AI after consecutive hits         | Unit tests: neighbour probe → direction lock → line extension → reset on sink, touching ships, two damaged ships; new stress test sinks every fleet in <90 shots with no invalid move and empty memory at the end | Pass |
+| Game restart                      | `Play again` after game over clears both boards, re-hides enemy fleet, returns to setup     | Pass   |
+| Browser refresh mid-game          | `location.reload()` mid-battle restores boards, turn and log; mute preference persists      | Pass   |
+| Mobile / responsive               | 390×844: no horizontal overflow, Command Center collapsed by default, keyboard (Enter/Space) toggles it, stays open across AI turns, mission report fits viewport, banners fit | Pass |
+| Audio                             | No `<audio>` element before first gesture; one looping track after first click; unmuted by default; volume/mute persist | Pass |
+| Callouts                          | Cursor Cruiser / Claude Carrier HIT + SUNK / ELIMINATED shown; removed lines ("ARMS RACE CONTINUES", "DEVIN REMAINS OPERATIONAL") never appear | Pass |
+| Console                           | Zero `console.error` / `console.warn` / page errors across all runs                         | Pass   |
+| Complete games end-to-end, live   | `qa:playthrough` desktop Smart (40 shots) and mobile Easy (53 shots): setup → sinks → game over → report → restart | Pass |
+
+## Application defects found
+
+None. No user-visible or state-integrity defect reproduced in this round.
+
+## QA-harness issue fixed (not an application bug)
+
+**Stale assertion in `scripts/playthrough.mjs`.** After the rename from "Agent Battleship"
+to "Devin Defender" the playthrough script still asserted the setup prompt contained
+`Battleship`, so the live desktop playthrough failed at "carrier placed, battleship is
+next". Root cause: test text not updated with the presentation rename; the UI was
+correct. Fix: assertion now checks `Devin Defender`. Verified: both live playthroughs pass.
+
+## Regression coverage added
+
+`src/engine/ai.test.ts` — "sinks every fleet in bounded shots across many random games":
+200 seeded random boards, asserting the Smart AI never returns null or an invalid move,
+always finishes under 90 shots (well below a 100-cell sweep) and has no pending hits left
+once the fleet is sunk. Guards the hunt/target/reset cycle against future changes.
+
+## Complete bug index (all rounds)
+
+| ID    | Round | Summary                                                         |
+| ----- | ----- | --------------------------------------------------------------- |
+| BUG-1 | 1     | Fast-refresh lint warning from helper export mixed with components |
+| BUG-2 | 1     | Enemy fleet panel leaked which ship had been hit                |
+| BUG-3 | 1     | Ship placement preview invisible on hovered cell                |
+| BUG-4 | 1     | Board cells unlabelled for assistive tech                       |
+| BUG-5 | 2     | AI forgot a damaged ship after sinking a touching ship          |
+| BUG-6 | 2     | Mid-game refresh discarded the game                             |
+| BUG-7 | 3     | Mission report showed AI statistics after a loss                |
+| BUG-8 | 3     | Impact ring drew across the whole board                         |
+| BUG-9 | 3     | Player sink message overwritten by AI reply                     |
+| —     | 4     | No application defects; one stale QA-script assertion fixed     |

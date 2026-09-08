@@ -87,8 +87,8 @@ assert(await page.locator('text=Place your').first().isVisible(), 'setup prompt 
 // Manual placement of the Carrier, horizontal.
 await cell(own(), 'A1').click();
 assert(
-  (await page.locator('text=Place your').first().innerText()).includes('Battleship'),
-  'carrier placed, battleship is next',
+  (await page.locator('text=Place your').first().innerText()).includes('Devin Defender'),
+  'carrier placed, Devin Defender is next',
 );
 
 // Invalid placement: overlap.
